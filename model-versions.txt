@@ -1,0 +1,4 @@
+﻿SI-WLS
+
+2021-10-14	Model02	Change core and coil dimensions and decreasing central gap to 7mm to reduce peak field integral
+2021-09-20	Model01	Wavelength shifter initial version
