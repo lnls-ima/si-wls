@@ -47,7 +47,7 @@ def compare_ratio_vs_iso_sc_area():
     for i in range(0, len(iso)):
         for s in range(0, len(s_sc)):
             d_cond = _np.subtract(d_total, 0.002*iso[i])
-            ratios[i,s] = calc_ratio_cu_sc(d_cond, s_sc[s])
+            ratios[i,s] = _materials.calc_ratio_cu_sc(d_cond, s_sc[s])
         _plt.plot(s_sc, ratios[i,:])
     # Plot results
     legend_labels = [str(i) for i in iso]
@@ -157,5 +157,100 @@ def prop_velocity_estimations():
     _plt.xlabel('Ratio Cu/Nb-Ti', fontsize=14)
     _plt.ylabel('Propagtion velocity [m/s]', fontsize=14)
     _plt.legend(['200', '100', '50'], title='RRR')
+    _plt.grid(True)
+    _plt.show()
+
+def internal_voltages_calculation():
+    L = 0.12
+    Iop = 242
+    Vmax = 600
+    # Length ratio where quench occured
+    alpha = 0.3
+    # Dump resitor calculation
+    Rd = Vmax/Iop
+    # Quench resistance
+    Rq = Rd/1000
+    # Time constant
+    tau = L/(Rd+Rq)
+    # Inductance before and after quench
+    Lbq = alpha*L
+    Laq = (1-alpha)*L
+    dIdt = -Iop/tau
+    Vp = 0
+    Vn = Vmax
+    Vbq = -Lbq*dIdt
+    Vq = Rq*Iop
+    Vaq = -Laq*dIdt
+    x = [0, alpha-0.01, alpha+0.01, 1]
+    _plt.plot(x, [Vp, Vbq, Vbq+Vq, Vn])
+    _plt.xlabel('Normalized coil length', fontsize=14)
+    _plt.ylabel('Voltage distribution [V]', fontsize=14)
+    _plt.grid(True)
+    _plt.show()
+
+def detection_voltage_vs_time_velocity():
+    # Copper resistivity for RRR = 50 (~RRR 200 @ 6T) [Ohm.m]
+    rho = 0.3e-9
+    # Copper area [mm2]
+    Acu = 0.288e-6
+    # Operating current [A]
+    Io = 250
+    # Detection time [s]
+    up = 0.2
+    low = 0
+    step = 0.01
+    tqds = _np.arange(low,up+step,step)
+    # Quench propagation [m/s]
+    vqs = [1, 5, 10, 20, 30, 40, 50]
+    Jo = Io/Acu
+    # Iterate for isolations ans SC areas
+    # Voltage thresholds
+    vths = _np.zeros((len(tqds), len(vqs)))
+    for i in range(0, len(vqs)):
+        vths[:,i] = vqs[i]*tqds*rho*Io/Acu
+        _plt.semilogy(tqds, vths[:,i])
+    # Plot results
+    _plt.title('Detection analysis for Model 3 (B = 6 T)')
+    _plt.xlabel('Detection time [s]', fontsize=14)
+    _plt.ylabel('Detection voltage [V]', fontsize=14)
+    _plt.legend([str(i) for i in vqs], title='v_{q} [m/s]')
+    _plt.grid(True)
+    _plt.show()
+
+def copper_specific_heat_fit():
+    # Polynomial fit for specific heat of copper from graph provided by Davide
+    # Tomasini. Works well up to 50 K.
+    # Data points from graph
+    x = [4, 10, 22, 50]
+    y = [0.1, 1, 10, 100]
+    # Temperature
+    up = 300
+    low = 4
+    step = 1
+    T = _np.arange(low,up+step,step)
+    n = len(x)
+    _plt.loglog(x, y, linewidth=2)
+    for i in range(n, n+1):
+        p = _np.polyfit(x, y, i)
+        y_est = _np.polyval(p, T)
+        _plt.loglog(T, y_est, 'x')
+    _plt.xlim([1, 300])
+    _plt.ylim([0.1, 1000])
+    _plt.grid(True)
+    _plt.show()
+
+def copper_resistivity_vs_temp_vs_RRR():
+    T = _np.logspace(_np.log10(4), _np.log10(300), 1000)
+    rrrs = [10, 20, 50, 100, 200]
+    for i in range(0, len(rrrs)):
+        rhos = _materials.copper_resistivity(T,rrrs[i])
+        _plt.loglog(T, rhos)
+    _plt.title('Detection analysis for Model 3 (B = 6 T)')
+    _plt.xlabel('Temperature [K]', fontsize=14)
+    _plt.ylabel('Resistivity [Ohm.m]', fontsize=14)
+    _plt.legend([str(i) for i in rrrs], title='RRR')
+    #_plt.ylabel('Resistivity [10^{-8} Ohm.m]');
+    #_plt.xlim([4, 300])
+    #_plt.ylim([2e-4, 2])
     _plt.grid(True)
     _plt.show()

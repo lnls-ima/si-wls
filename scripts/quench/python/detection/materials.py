@@ -32,6 +32,25 @@ import numpy as _np
 #     k = 
 #     return [rho, c, k]
 
+def copper_resistivity(T, RRR):
+    # Ref.: M. McAshan, "MIITS Integrals for Copper and for Nb-46Ti "
+    return _np.multiply(
+        1e-8,
+        _np.add(
+            _np.divide(1.545, RRR),
+            _np.divide(
+                1,
+                _np.add(
+                    _np.add(
+                        _np.divide(2.32547*1e9, _np.power(T, 5)),
+                        _np.divide(9.57137*1e5, _np.power(T, 3))
+                        ),
+                    _np.divide(1.62735*1e2, T)
+                    )
+                )
+            )
+        )
+
 def calc_ratio_cu_sc(d_cond, s_sc, d_isolation=0.0):
     try:
         d_cond = _np.subtract(d_cond, d_isolation)
