@@ -81,22 +81,26 @@ def nbti_specific_heat_estimation():
 def prop_velocity_estimations():
     # Operation parameters
     ## Operating current [A]
-    Iop = 250
+    #Iop = 250
+    Iop = 275
     ## Operating SC temperature [K]
-    Top = 4.2
+    #Top = 4.2
+    Top = 5.0
     ## Critical temperature [K]
     Tc = 9.2
     ## Current-sharing temperature [K]
-    Tcs = 5.95
+    #Tcs = 5.95
+    Tcs = 6.06
     # Transition temperature [k]
     Tjoule = _np.divide(_np.add(Tc, Tcs), 2)
     # Wire parameters
     ## Residual resistivity ratio
     RRR = 50
     # Cu/Nb-Ti ratio
-    ratio_cu_sc = [0.6, 0.8, 1, 1.2]
+    ratio_cu_sc = [0.6, 0.8, 0.9, 1, 1.2]
     ## Total conductor diameter [mm]
-    d_cond = 0.82
+    #d_cond = 0.82
+    d_cond = 0.85
     # Total conductor and composite areas [mm²]
     s_cond = _np.multiply(_np.pi, _np.power(_np.divide(d_cond, 2), 2))
     [s_sc, s_cu] = _materials.calc_area_sc_cu(d_cond, ratio_cu_sc)
@@ -152,12 +156,21 @@ def prop_velocity_estimations():
     vqs = _detection.calc_prop_velocity(Jop, C_comp, resty_comp, k_comp, Tjoule, Top, method)
     # Plot results
     #plot(ratio_cu_sc, vqs,'d:','MarkerSize',15)
-    _plt.plot(ratio_cu_sc, vqs, linestyle='dotted', markersize=15)
-    _plt.title('Estimated propagation velocity @ Iop = 250 A, Top = 4.2 K, Tc = 9.8 K, Tcs = 5.9K')
+    #_plt.plot(ratio_cu_sc, vqs, linestyle='dotted', markersize=15)
+    _plt.plot(ratio_cu_sc, vqs, 'D:')
+    for i in range(0, len(ratio_cu_sc)):
+        print('ratio={0}, vqs={1}'.format(ratio_cu_sc[i], vqs[i]))
+    #_plt.title('Estimated propagation velocity @ Iop = 250 A, Top = 4.2 K, Tc = 9.8 K, Tcs = 5.9K')
+    _plt.title('Estimated propagation velocity @ '
+               'Iop = 275 A, Top = 5.0 K, Tc = 9.8 K, Tcs = {3}K'.format(
+                   Iop, Top, Tc, Tcs
+                   )
+                )
     _plt.xlabel('Ratio Cu/Nb-Ti', fontsize=14)
     _plt.ylabel('Propagtion velocity [m/s]', fontsize=14)
-    _plt.legend(['200', '100', '50'], title='RRR')
-    _plt.grid(True)
+    #_plt.legend(['200', '100', '50'], title='RRR')
+    _plt.legend(['50'], title='RRR')
+    _plt.grid(visible=True, which='both')
     _plt.show()
 
 def internal_voltages_calculation():
@@ -191,29 +204,37 @@ def internal_voltages_calculation():
 def detection_voltage_vs_time_velocity():
     # Copper resistivity for RRR = 50 (~RRR 200 @ 6T) [Ohm.m]
     rho = 0.3e-9
-    # Copper area [mm2]
-    Acu = 0.288e-6
+    # Copper area [m2]
+    #Acu = 0.288e-6
+    Acu = 0.2682e-6
     # Operating current [A]
-    Io = 250
+    #Io = 250
+    Io = 275
     # Detection time [s]
-    up = 0.2
+    up = 0.12
     low = 0
     step = 0.01
     tqds = _np.arange(low,up+step,step)
     # Quench propagation [m/s]
-    vqs = [1, 5, 10, 20, 30, 40, 50]
+    #vqs = [1, 5, 10, 20, 30, 40, 50]
+    #vqs = [1, 5, 10, 20, 30, 37.48, 40, 50]
+    vqs = [37.09]
     Jo = Io/Acu
     # Iterate for isolations ans SC areas
     # Voltage thresholds
     vths = _np.zeros((len(tqds), len(vqs)))
     for i in range(0, len(vqs)):
         vths[:,i] = vqs[i]*tqds*rho*Io/Acu
-        _plt.semilogy(tqds, vths[:,i])
+        #_plt.semilogy(tqds, vths[:,i])
+        _plt.plot(tqds, vths[:,i])
     # Plot results
-    _plt.title('Detection analysis for Model 3 (B = 6 T)')
-    _plt.xlabel('Detection time [s]', fontsize=14)
-    _plt.ylabel('Detection voltage [V]', fontsize=14)
-    _plt.legend([str(i) for i in vqs], title='v_{q} [m/s]')
+    #_plt.title('Detection analysis for Model 3 (B = 6 T)')
+    _plt.title('Detection analysis for Model 5 (B = 6 T)', fontsize=18)
+    _plt.xlabel('Detection time [s]', fontsize=16)
+    _plt.ylabel('Detection voltage [V]', fontsize=16)
+    _plt.legend([str(i) for i in vqs], title='$v_q$ [m/s]', fontsize=14)
+    #_plt.xlim([0, up])
+    _plt.ylim([0, 1.5])
     _plt.grid(True)
     _plt.show()
 
