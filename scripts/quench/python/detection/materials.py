@@ -13,11 +13,17 @@ class Copper:
         [1] M. McAshan, "MIITS Integrals for Copper and for Nb-46Ti"
         [2] KN5010 Nº4 (Davide)
         [3] https://www.copper.org/resources/properties/cryogenic/   
+        [4] Radebaugh, P. "Properties of Selected Materials at Cryogenic
+            Temperatures"
+        [5] https://www.copper.org/resources/properties/cryogenic/
     """
 
     def __init__(self):    
 
-        
+        # [kg/m³]
+        self._density = 9000
+
+        # Refs.: [4]
         self._specific_heat_data = {
             'T':
                 _np.array([4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]),
@@ -25,6 +31,7 @@ class Copper:
             'c': _np.array([0.09942, 0.2303, 0.4639, 0.8558, 1.47, 2.375, 3.64, 5.327, 7.491, 26.4, 57.63, 95.84, 135.2, 171.8, 203.8, 230.9, 253.5, 287.6, 311.6, 329.4, 343.4, 355, 364.7, 372.6, 378.6, 382.5, 384])
         }
 
+        # Refs.: [4],[5]
         self._thermal_conductivity_per_rrr_data = {
             50: {
                 'T': 
@@ -60,7 +67,7 @@ class Copper:
         }
 
     def calc_resistivity(self, T, RRR, B):
-    # Ref.: M. McAshan, "MIITS Integrals for Copper and for Nb-46Ti "
+    # Ref.: [1]
         return _np.multiply(
             1e-8,
             _np.add(
@@ -103,8 +110,16 @@ class Copper:
 
 
 class NbTi:
-
+    """ Class to hold NbTi properties 
+    
+        Refs.: 
+        [1] Akbar and Keller. Thermal Analysis and Simulation of the Superconducting Magnet in the SpinQuestExperiment at Fermilab.
+        [2] 
+    """
     def __init__(self):
+
+        # Estimated density from 50-50% Nb-Ti alloy [kg/m³]
+        self.density = 6500
 
         self._specific_heat_data = {
 
@@ -122,36 +137,48 @@ class NbTi:
             self._specific_heat_data['c']
             )
 
-class SCWire:
-    def calc_ratio_cu_sc(d_cond, s_sc, d_isolation=0.0):
-        try:
-            d_cond = _np.subtract(d_cond, d_isolation)
-            s_cond = _np.multiply(_np.pi, _np.power(d_cond*0.5, 2))
-            s_cu = _np.subtract(s_cond, s_sc)
-            ratio_cu_sc = _np.subtract(_np.divide(s_cond, s_sc), 1)
-            return [ratio_cu_sc, s_cu]
-        except Exception:
-            _traceback.print_exc(file=_sys.stdout)
+    def calc_specific_heat2(self, T):
+        return _np.interp(
+            T,
+            self._specific_heat_data['T'],
+            self._specific_heat_data['c']
+            )
 
-    def calc_area_sc_cu(d_cond, ratio_cu_sc, d_isolation=0.0):
-        try:
-            d_cond = _np.subtract(d_cond, d_isolation)
-            s_cond = _np.multiply(_np.pi, _np.power(d_cond*0.5, 2))
-            s_sc = _np.divide(s_cond, _np.add(ratio_cu_sc, 1))
-            s_cu = _np.subtract(s_cond, s_sc)
-            return [s_sc, s_cu]
-        except Exception:
-            _traceback.print_exc(file=_sys.stdout)
+#class SCWire:
+def calc_ratio_cu_sc(d_cond, s_sc, d_isolation=0.0):
+    try:
+        d_cond = _np.subtract(d_cond, d_isolation)
+        s_cond = _np.multiply(_np.pi, _np.power(d_cond*0.5, 2))
+        s_cu = _np.subtract(s_cond, s_sc)
+        ratio_cu_sc = _np.subtract(_np.divide(s_cond, s_sc), 1)
+        return [ratio_cu_sc, s_cu]
+    except Exception:
+        _traceback.print_exc(file=_sys.stdout)
+
+def calc_area_sc_cu(d_cond, ratio_cu_sc, d_isolation=0.0):
+    try:
+        d_cond = _np.subtract(d_cond, d_isolation)
+        s_cond = _np.multiply(_np.pi, _np.power(d_cond*0.5, 2))
+        s_sc = _np.divide(s_cond, _np.add(ratio_cu_sc, 1))
+        s_cu = _np.subtract(s_cond, s_sc)
+        return [s_sc, s_cu]
+    except Exception:
+        _traceback.print_exc(file=_sys.stdout)
 
 if __name__ == "__main__":
 
     copper = Copper()
     nbti = NbTi()
 
-    T = 9.2
-    RRR = 100
-    print('\nT = {} K'.format(T))
-    print('RRR = {}'.format(RRR))
+    #T = 9.2
+    #RRR = 100
+
+    print('\n Enter operation parameters:')
+    T = float(input('\n    Temperature [K]: '))
+    RRR = int(input('\n    Copper RRR: '))
+
+    print('\n T = {} K'.format(T))
+    print(' RRR = {}'.format(RRR))
 
     [rho,c,k] = copper.calc_properties(T, RRR)
 
@@ -191,9 +218,9 @@ if __name__ == "__main__":
     plt.show()
 
     # Plot specific heat
-    plt.loglog( copper._specific_heat_data['T'],
-                copper._specific_heat_data['c'])
-    plt.loglog( nbti._specific_heat_data['T'],
+    plt.plot( copper._specific_heat_data['T'],
+                copper._specific_heat_data['c'],'x-')
+    plt.plot( nbti._specific_heat_data['T'],
                 nbti._specific_heat_data['c'])
     plt.grid(which='both')
     plt.title('Specific heat of copper and NbTi')
