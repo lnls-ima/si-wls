@@ -70,7 +70,7 @@ def prop_velocity_estimations(parameters: dict):
     # Thermal conductivity [W/m.K]
     # Density [kg/m³]
     [resty_cu, c_cu, k_cu] = copper.calc_properties(Tjoule, RRR, B)
-    dsty_cu = copper._density       
+    dsty_cu = copper.density
 
     """ Nb-Ti properties @ Tjoule """
     nbti = _materials.NbTi()
@@ -94,7 +94,8 @@ def prop_velocity_estimations(parameters: dict):
     print('    SC specific heat = {} J/kg.K'.format(c_sc))
     
     # Current density. During quench, all current goes to copper.
-    Jop = _np.divide(_np.multiply(Iop, 1e6), s_cu)
+    #Jop = _np.divide(_np.multiply(Iop, 1e6), s_cu)
+    Jop = _np.divide(_np.multiply(Iop, 1e6), s_cu + s_sc)
 
     # Composite volumetric specific heat
     C_comp = _np.add(
