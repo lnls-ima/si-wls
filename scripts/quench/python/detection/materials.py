@@ -1,10 +1,7 @@
-from re import T
 import numpy as _np
 import matplotlib.pyplot as plt
 import sys as _sys
 import traceback as _traceback
-
-from numpy.core.defchararray import array
 
 class Copper:
     """ Class to hold copper properties 
@@ -13,29 +10,29 @@ class Copper:
         [1] M. McAshan, "MIITS Integrals for Copper and for Nb-46Ti"
         [2] KN5010 Nº4 (Davide)
         [3] https://www.copper.org/resources/properties/cryogenic/   
-        [4] Radebaugh, P. "Properties of Selected Materials at Cryogenic
-            Temperatures"
-        [5] https://www.copper.org/resources/properties/cryogenic/
+        [4] https://www.copper.org/resources/properties/atomic_properties.html
+        [5]  Bradley, P., Radebaugh, R., "Properties of Selected Materials at Cryogenic Temperatures", NIST, 2013: https://www.nist.gov/publications/properties-selected-materials-cryogenic-temperatures
+        
     """
 
     def __init__(self):    
 
-        # [kg/m³]
-        self.density = 9000
+        # Ref.: [4] [kg/m³]
+        self.density = 8940
 
-        # Refs.: [4]
+        # Refs.: [5] [J/Kg.K]
         self._specific_heat_data = {
             'T':
-                _np.array([4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]),
+                _np.array([4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0, 240.0, 260.0, 280.0, 300.0]),
 
             'c': _np.array([0.09942, 0.2303, 0.4639, 0.8558, 1.47, 2.375, 3.64, 5.327, 7.491, 26.4, 57.63, 95.84, 135.2, 171.8, 203.8, 230.9, 253.5, 287.6, 311.6, 329.4, 343.4, 355, 364.7, 372.6, 378.6, 382.5, 384])
         }
 
-        # Refs.: [4],[5]
+        # Refs.: [3],[5]
         self._thermal_conductivity_per_rrr_data = {
             50: {
                 'T': 
-                    _np.array([4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 70, 80, 90,  100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]),
+                    _np.array([4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0, 240.0, 260.0, 280.0, 300.0]),
 
                 'k':
                     _np.array([320.4, 466.8, 622.3, 778.1, 927.3, 1064.0, 1185.0, 1287.0, 1368.0, 1444.0, 1163.0, 863.6, 670.0, 561.1, 500.3, 465.1, 443.9, 421.8, 411.6, 406.0, 402.6, 400.1, 398.2, 396.5, 395.0, 393.6, 392.4])
@@ -43,7 +40,7 @@ class Copper:
 
             100: {
                 'T': 
-                    _np.array([4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]),
+                    _np.array([4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0, 240.0, 260.0, 280.0, 300.0]),
 
                 'k':
                     _np.array([642.3, 931.7, 1239.0, 1540.0, 1814.0, 2045.0, 2226.0, 2352.0, 2423.0, 2143.0, 1485.0, 1005.0, 741.2, 603.6, 529.3, 487.0, 461.5, 434.8, 422.1, 415.0, 410.3, 407.0, 404.2, 401.9, 399.9, 398.0, 396.3])
@@ -59,7 +56,7 @@ class Copper:
 
             300: {
                 'T': 
-                    _np.array([4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]),
+                    _np.array([4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0, 240.0, 260.0, 280.0, 300.0]),
 
                 'k':
                     _np.array([1926.6, 2810.0, 3636.0, 4320.0, 4829.0, 5147.0, 5276.0, 5234.0, 5052.0, 3257.0, 1833.0, 1130.0, 801.8, 638.5, 551.0, 501.0, 471.1, 440.6, 427.6, 421.2, 417.5, 414.6, 411.8, 408.8, 405.5, 401.8, 397.9])
@@ -67,19 +64,19 @@ class Copper:
         }
 
     def calc_resistivity(self, T, RRR, B):
-    # Ref.: [1]
+    # Ref.: [1] [Ohm.m]
         return _np.multiply(
             1e-8,
             _np.add(
-                _np.divide(1.545, RRR),
+                _np.divide(1.545, float(RRR)),
                 _np.divide(
                     1,
                     _np.add(
                         _np.add(
-                            _np.divide(2.32547*1e9, _np.power(T, 5)),
-                            _np.divide(9.57137*1e5, _np.power(T, 3))
+                            _np.divide(2.32547*1e9, _np.power(float(T), 5)),
+                            _np.divide(9.57137*1e5, _np.power(float(T), 3))
                             ),
-                        _np.divide(1.62735*1e2, T)
+                        _np.divide(1.62735*1e2, float(T))
                         )
                     )
                 )
@@ -114,12 +111,16 @@ class NbTi:
     
         Refs.: 
         [1] Akbar and Keller. Thermal Analysis and Simulation of the Superconducting Magnet in the SpinQuestExperiment at Fermilab.
-        [2] 
+        [2] https://onlinelibrary.wiley.com/doi/pdf/10.1002/9783527635467.app1
+        [3] https://qps.web.cern.ch/download/pdf/Quench_Wilson_1.pdf
     """
     def __init__(self):
 
-        # Estimated density from 50-50% Nb-Ti alloy [kg/m³]
-        self.density = 6500
+        # Ref.: [1-2] [kg/m³]
+        self.density = 6000
+
+        # Ref.: [3] [kg/m³]
+        self.density = 6200
 
         self._specific_heat_data = {
 
@@ -225,7 +226,7 @@ if __name__ == "__main__":
                     [copper.calc_resistivity(t, rrr, 0) 
                     for t in copper._specific_heat_data['T'] ]
         )
-
+        
     plt.legend(copper._thermal_conductivity_per_rrr_data.keys(), title='RRR')
     plt.grid(which='both')
     plt.title('Electrical resistivity of copper')
@@ -247,9 +248,9 @@ if __name__ == "__main__":
     plt.show()
 
     # Plot specific heat
-    plt.plot( copper._specific_heat_data['T'],
+    plt.loglog( copper._specific_heat_data['T'],
                 copper._specific_heat_data['c'],'x-')
-    plt.plot( nbti._specific_heat_data['T'],
+    plt.loglog( nbti._specific_heat_data['T'],
                 nbti._specific_heat_data['c'])
     plt.grid(which='both')
     plt.title('Specific heat of copper and NbTi')
