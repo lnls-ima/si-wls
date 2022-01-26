@@ -1,3 +1,5 @@
+from stat import S_ISCHR
+from xmlrpc.client import Boolean
 import numpy as _np
 import matplotlib.pyplot as plt
 import sys as _sys
@@ -68,15 +70,15 @@ class Copper:
         return _np.multiply(
             1e-8,
             _np.add(
-                _np.divide(1.545, float(RRR)),
+                _np.divide(1.545, _np.float_(RRR)),
                 _np.divide(
                     1,
                     _np.add(
                         _np.add(
-                            _np.divide(2.32547*1e9, _np.power(float(T), 5)),
-                            _np.divide(9.57137*1e5, _np.power(float(T), 3))
+                            _np.divide(2.32547*1e9, _np.power(_np.float_(T), 5)),
+                            _np.divide(9.57137*1e5, _np.power(_np.float_(T), 3))
                             ),
-                        _np.divide(1.62735*1e2, float(T))
+                        _np.divide(1.62735*1e2, _np.float_(T))
                         )
                     )
                 )
@@ -113,6 +115,9 @@ class NbTi:
         [1] Akbar and Keller. Thermal Analysis and Simulation of the Superconducting Magnet in the SpinQuestExperiment at Fermilab.
         [2] https://onlinelibrary.wiley.com/doi/pdf/10.1002/9783527635467.app1
         [3] https://qps.web.cern.ch/download/pdf/Quench_Wilson_1.pdf
+        [4] M. McAshan, "MIITS Integrals for Copper and for Nb-46Ti
+        [5] Russenschuck, S., "Field Computation for Accelerator Magnets",
+            Appendix A, Wiley, 2010
     """
     def __init__(self):
 
@@ -122,56 +127,67 @@ class NbTi:
         # Ref.: [3] [kg/m³]
         self.density = 6200
 
-        self._specific_heat_data = {
+        # Ref.: [4] Table IV [J/Kg.K]
+        self._specific_heat_data_nc = {
 
             'T':
-                _np.array([1.0500, 1.5000, 2.0143, 2.5071, 3.0429, 3.5143, 4.0286, 4.5000, 5.0357, 5.5500, 6.0210, 6.5571, 7.0071, 7.5214, 8.0143, 8.5286, 9.0214]),
+                _np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340]),
 
             'c':
-                _np.array([0.0743, 0.0850, 0.0957, 0.1129, 0.1321, 0.1514, 0.1750, 0.1986, 0.2264, 0.2521, 0.2779, 0.3079, 0.3314, 0.3614, 0.3850, 0.4107, 0.4343])
+                _np.array([0.00432, 0.0246, 0.0685, 0.124, 0.176, 0.219, 0.253, 0.279, 0.300, 0.317, 0.341, 0.357, 0.369, 0.378, 0.385, 0.391, 0.396, 0.400, 0.404, 0.407, 0.410, 0.413]) * 1e3 
         }
 
-        self._specific_heat_broad_range_data = {
-            'T':
-                _np.array([1.5581039750498138, 1.5883940514316126, 1.9530369019987919, 2.1638920717259715, 2.398522780648882, 2.5141467573528145, 2.786168155947882, 3.0302316506989193, 3.423373982335809, 3.9730231329972185, 4.364692107502426, 4.70287332884602, 5.161049650562195, 5.71503695448499, 7.072099134341036, 8.204696109024994, 8.365373794816199, 8.761862541138631, 9.428145356090234, 12.272363848151734, 12.845903299470297, 13.823722273578996, 14.479934640983812, 15.021983994705922, 16.025200310984363, 17.09781736866501, 20.0011933521279, 21.73645521500584, 29.76417488530413, 33.24983930982648, 40.01039616251394, 43.843653646895234, 50.33542957003674, 57.19858088024668, 59.90537902409573, 67.46383807254955, 70.62167083152046, 78.7979451928987, 90.37632707983092, 115.54313331522526, 226.39060414783265, 102.64127105782228, 167.7412567755229, 337.5361655904029]),
-            'c':
-                _np.array([0.009532065363059098, 0.010993543401641659, 0.02752116081441645, 0.0392970863860982, 0.0591981792792795, 0.07396888500484718, 0.10848504489452851, 0.14684870370872327, 0.248394286197117, 0.40533919766936377, 0.6216537875000117, 0.8120381180284156, 1.0893574557940544, 1.448298744825334, 2.5827291094858302, 4.030669576056282, 4.732377117040629, 5.360274268063684, 5.909842783657783, 6.506148544469562, 6.800644122568072, 7.56510041989556, 8.645658870722599, 9.200388200972544, 10.702370474057734, 12.6737540089239, 17.92833832100754, 21.999217149472315, 47.70439030191089, 61.19453604724956, 98.94454271654989, 110.05137143065701, 143.6844162726989, 161.20070742365743, 180.96678751426828, 204.8624689147761, 216.05494411601626, 238.1392901213688, 274.4005703724762, 307.5711217975084, 385.88357984845527, 286.63975620661347, 353.75782467912677, 413.1610617050806])
-        }
 
-        self._thermal_conductivity_data = {
-            'T':
-                _np.array([1.0000, 1.5000, 2.0000, 2.5000, 3.0000, 3.5000, 4.0000, 4.5000, 5.0000, 5.5000, 6.0000, 6.5000, 7.0000, 7.5000, 8.0000, 8.5000, 9.0000, 9.5000]),
-            'k':
-                _np.array([0.0756, 0.0855, 0.0987, 0.1150, 0.1340, 0.1555, 0.1791, 0.2046, 0.2316, 0.2599, 0.2891, 0.3190, 0.3492, 0.3795, 0.4095, 0.4390, 0.4676, 0.4951])
-        }
+    def calc_specific_heat(self, T, B, is_sc : Boolean):
+        
+        # Ref [4] Table IV 
+        #
+        # Due to good continuity between this and the last condition, this
+        # function is used for normal conducting and T >= 20 K, instead of  
+        # T >= 10 K. This way, a smoother transition from 10 K to 20 K is
+        # obtained than from the interpolation provided in this one.
+        #
+        # [J/Kg.K]
+        if T >= 20:
+            return _np.interp(
+                T,
+                self._specific_heat_data_nc['T'],
+                self._specific_heat_data_nc['c']
+                )
 
-    def calc_specific_heat(self, T):
-        return _np.interp(
-            T,
-            self._specific_heat_data['T'],
-            self._specific_heat_data['c']
-            )
+        # Ref [1] Eq. 22 | Ref [5] Eq. A.25
+        #
+        # This formula is only used for superconducting condition and T < Tc 
+        # (9.2 K).
+        #
+        # [J/Kg.K]
+        elif is_sc and T < 9.2:
+            return _np.add(
+                _np.multiply(0.0082, _np.power(_np.float_(T), 3)),
+                _np.multiply(0.011, 
+                    _np.multiply(_np.float_(B), _np.float_(T))
+                    )
+                )
 
-    def calc_specific_heat2(self, T):
-        return _np.interp(
-            T,
-            self._specific_heat_data['T'],
-            self._specific_heat_data['c']
-            )
-
-    def calc_specific_heat_broad_range(self, T):
-        return _np.interp(
-            T,
-            self._specific_heat_broad_range_data['T'],
-            self._specific_heat_broad_range_data['c']
-            )
+        # Ref[4] Eq. Cp(T < 10 K) 
+        #
+        # Due to good continuity between this and the first condition, this
+        # function is used for normal conducting and T < 20 K, instead of  
+        # T < 10 K. This way, a smoother transition from 10 K to 20 K is
+        # obtained than from the interpolation provided in the other one.
+        #
+        # [J/Kg.K]
+        else:
+            return _np.add(
+                _np.multiply(0.002711, _np.power(_np.float_(T), 3)),
+                _np.multiply(0.161, _np.float_(T))
+                )
 
     def calc_thermal_conductivity(self, T):
-        return _np.interp(
-            T,
-            self._thermal_conductivity_data['T'],
-            self._thermal_conductivity_data['k']
-            )
+        # Ref[5] Eq. A.20
+        # [W/m.K]
+        p = [-5.0e-14, 1.5e-11, 6.0e-9, -3.0e-6, 3.0e-4, 4.56e-2, 6.6e-2]
+        return _np.polyval(p,T)
 
 
 #class SCWire:
@@ -199,12 +215,12 @@ if __name__ == "__main__":
 
     copper = Copper()
     nbti = NbTi()
-
+    
     #T = 9.2
     #RRR = 100
 
     print('\n Enter operation parameters:')
-    T = float(input('\n    Temperature [K]: '))
+    T = _np.float_(input('\n    Temperature [K]: '))
     RRR = int(input('\n    Copper RRR: '))
 
     print('\n T = {} K'.format(T))
@@ -218,9 +234,12 @@ if __name__ == "__main__":
     print('    Thermal conductivity: {} W/m.K'.format(k))
     
     print('\n NbTi Properties:')
-    print('\n    Specific heat: {} J/kg.K\n'.format(nbti.calc_specific_heat(T)))
+    print('\n    Specific heat: {} J/kg.K\n'.format(
+                                        nbti.calc_specific_heat(T,0,True)))
+    print('    Thermal conductivity: {} W/m.K'.format(
+                                        nbti.calc_thermal_conductivity(T)))
 
-    # Plot resistivity
+    ## Plot resistivity
     for rrr in copper._thermal_conductivity_per_rrr_data.keys():
         plt.loglog( copper._specific_heat_data['T'],
                     [copper.calc_resistivity(t, rrr, 0) 
@@ -234,27 +253,56 @@ if __name__ == "__main__":
     plt.ylabel('Resistivity [Ohm.m]')
     plt.show()
     
-    # Plot thermal conductivity
+    ## Plot thermal conductivity
+    T_array = [_np.float_(i) for i in range(4,300)]
+
     for i in copper._thermal_conductivity_per_rrr_data.keys():
         plt.loglog( copper._thermal_conductivity_per_rrr_data[i]['T'],
                     copper._thermal_conductivity_per_rrr_data[i]['k'])
 
-    plt.legend(copper._thermal_conductivity_per_rrr_data.keys(), title='RRR')
+    plt.loglog( T_array,
+                [nbti.calc_thermal_conductivity(t) for t in T_array ]
+        )
+
+    k_legends = list(copper._thermal_conductivity_per_rrr_data.keys())
+    k_legends = ['Cu RRR ' + str(rrr)
+                    for rrr in copper._thermal_conductivity_per_rrr_data.keys()]
+    k_legends.append('Nb-Ti')
+    plt.legend(k_legends)
     plt.grid(which='both')
-    plt.axis([4,300,100,10000])
-    plt.title('Thermal conductivity of copper')
+    plt.title('Thermal conductivity of copper and Nb-Ti')
     plt.xlabel('Temperature [K]')
     plt.ylabel('Thermal conductivity [W/m.K]')
     plt.show()
 
-    # Plot specific heat
-    plt.loglog( copper._specific_heat_data['T'],
+    ## Plot specific heat
+    T_array = _np.sort(_np.append(
+                        copper._specific_heat_data['T'], 
+                        [4.0 + i/10.0 for i in range(60)]
+                    )
+                )
+
+    plt.plot( copper._specific_heat_data['T'],
                 copper._specific_heat_data['c'],'x-')
-    plt.loglog( nbti._specific_heat_data['T'],
-                nbti._specific_heat_data['c'])
+
+    plt.plot( T_array,
+                [nbti.calc_specific_heat(t, 0, True) for t in T_array ],'x-'
+        )
+    plt.plot( T_array,
+                [nbti.calc_specific_heat(t, 6, True) for t in T_array ],'x-'
+        )
+    plt.plot( T_array,
+                [nbti.calc_specific_heat(t, 0, False) for t in T_array ],'x-'
+        )
+    #'''
+
     plt.grid(which='both')
     plt.title('Specific heat of copper and NbTi')
-    plt.legend(['Copper','NbTi'])
+    plt.legend(['Copper',
+                'Superconducting Nb-Ti, B = 0 T',
+                'Superconducting Nb-Ti, B = 0 T',
+                'Normal conducting Nb-Ti'])
     plt.xlabel('Temperature [K]')
     plt.ylabel('Specific Heat [J/kg.K]')
     plt.show()
+

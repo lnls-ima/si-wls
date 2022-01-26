@@ -1,0 +1,3 @@
+*.py[cod]
+*.asv
+__pycache__/

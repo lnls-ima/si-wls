@@ -13,6 +13,7 @@ def calc_detection_voltage(vq,rho,tqd,Io,Acu):
                 R = _np.multiply(_np.multiply(v, tqd), _np.divide(rho, Acu))
                 vdet = _np.multiply(R, Io)
                 vdets.append(vdet)
+            vdets = _np.array(vdets)
             return vdets
 
         else:
@@ -84,10 +85,8 @@ def prop_velocity_estimations(parameters: dict):
     #                           Resistivity of NbTi Alloys at Low Temperatures"
     # Density [kg/m³]
     resty_sc = 1e-5
-    c_sc = nbti.calc_specific_heat(Tjoule)
-    c_sc = [2.414, 3.85, 5.391]
-    #c_sc = 2.414
-    k_sc = 0.5              
+    c_sc = nbti.calc_specific_heat(Tjoule, B, True)
+    k_sc = nbti.calc_thermal_conductivity(Tjoule)
     dsty_sc = nbti.density
 
     print('\n    Copper specific heat = {} J/kg.K'.format(c_cu))
@@ -130,17 +129,29 @@ def prop_velocity_estimations(parameters: dict):
                 Jop, C_comp, resty_comp, k_comp, Tjoule, Top, method
         )
     
-    print('\n    Propagation velocity = {} m/s\n\n'.format(vqs))
+    t_det = 0.05
+    vdet_t = calc_detection_voltage(vqs,resty_comp,t_det,Iop,s_cond*1e-6)
+    print('\n    Propagation velocity = {} m/s'.format(vqs))
+    print('    Detection voltage @ {} ms = {} V \n\n'.format(t_det*1e3, vdet_t))
 
-    
+
     tqd = [t*0.1/100 for t in range(100)]
 
-    #vdet_comp = calc_detection_voltage(vqs,resty_comp,tqd,Iop,s_cond*1e-6)
-    vdet_cu = calc_detection_voltage(vqs,resty_cu,tqd,Iop,s_cu*1e-6)
-
-    for vd in vdet_cu:
-        _plt.plot(tqd,vd)
-
+    vdet_comp = calc_detection_voltage(vqs,resty_comp,tqd,Iop,s_cond*1e-6)
+    
+    # Simulations showed these formula is equivalent to above
+    #vdet_cu = calc_detection_voltage(vqs,resty_cu,tqd,Iop,s_cu*1e-6)
+    
+    #'''
+    if vdet_comp.ndim > 1:
+        for vd in vdet_comp:
+            _plt.plot(tqd,vd)
+    else:
+        _plt.plot(tqd,vdet_comp)
+    '''
+    _plt.plot(tqd,vdet_comp)
+    '''
+    
     _plt.title(
             'Estimated detection voltage @ Iop = {} A, Top = {} K, RRR = {}, Ratio Cu/Nb-Ti = {}'.format(
                 parameters['Iop'],
@@ -149,12 +160,11 @@ def prop_velocity_estimations(parameters: dict):
                 parameters['ratio_cu_sc'])
         )
 
-    _plt.legend([2.414, 3.85, 5.391], title = 'NbTi specific heat')
-
     _plt.xlabel('Time [s]')
     _plt.ylabel('Detection voltage [V]')
     _plt.grid()
     _plt.show()
 
     return vqs
+    
     
