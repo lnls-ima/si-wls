@@ -1,5 +1,3 @@
-from stat import S_ISCHR
-from xmlrpc.client import Boolean
 import numpy as _np
 import matplotlib.pyplot as plt
 import sys as _sys
@@ -99,13 +97,14 @@ class Copper:
             self._thermal_conductivity_per_rrr_data[RRR]['k']
             )
 
-    def calc_properties(self, T, RRR, B = 0):
+    def calc_properties(self, T, RRR, B):
         
+        dsty = self.density                         # [kg/m³]
         rho = self.calc_resistivity(T, RRR, B)      # [Ohm.m]
         c = self.calc_specific_heat(T)              # [J/kg.K]
         k = self.calc_thermal_conductivity(T, RRR)  # [W/m.K]
 
-        return [rho, c, k]
+        return [dsty, rho, c, k]
 
 
 class NbTi:
@@ -127,6 +126,9 @@ class NbTi:
         # Ref.: [3] [kg/m³]
         self.density = 6200
 
+        # Critical temperature [K]
+        self.Tc = 9.2
+
         # Ref.: [4] Table IV [J/Kg.K]
         self._specific_heat_data_nc = {
 
@@ -137,8 +139,14 @@ class NbTi:
                 _np.array([0.00432, 0.0246, 0.0685, 0.124, 0.176, 0.219, 0.253, 0.279, 0.300, 0.317, 0.341, 0.357, 0.369, 0.378, 0.385, 0.391, 0.396, 0.400, 0.404, 0.407, 0.410, 0.413]) * 1e3 
         }
 
+    def calc_resistivity(self, T, is_sc):
+        # Ref.: [?] [Ohm.m]
+        if is_sc:
+            return 1e-5
+        else:
+            return 1e-5
 
-    def calc_specific_heat(self, T, B, is_sc : Boolean):
+    def calc_specific_heat(self, T, B, is_sc):
         
         # Ref [4] Table IV 
         #
@@ -161,7 +169,7 @@ class NbTi:
         # (9.2 K).
         #
         # [J/Kg.K]
-        elif is_sc and T < 9.2:
+        elif is_sc and T < self.Tc:
             return _np.add(
                 _np.multiply(0.0082, _np.power(_np.float_(T), 3)),
                 _np.multiply(0.011, 
@@ -189,8 +197,113 @@ class NbTi:
         p = [-5.0e-14, 1.5e-11, 6.0e-9, -3.0e-6, 3.0e-4, 4.56e-2, 6.6e-2]
         return _np.polyval(p,T)
 
+    def calc_properties(self, T, RRR, B, is_sc):
+        
+        dsty = self.density                         # [kg/m³]
+        rho = self.calc_resistivity(T, is_sc)       # [Ohm.m]
+        c = self.calc_specific_heat(T, B, is_sc)    # [J/kg.K]
+        k = self.calc_thermal_conductivity(T)       # [W/m.K]
 
-#class SCWire:
+        return [dsty, rho, c, k]
+
+class SCWire:
+    def __init__(self, parameters: dict):
+    
+        [Iop, B, Top, Tc, Tcs, RRR, ratio_cu_sc, d_cond] = parameters.values()
+        
+        [s_sc, s_cu] = self.calc_area_sc_cu(d_cond, ratio_cu_sc)
+        
+        # Transition temperature [K]
+        self.Tjoule = _np.divide(_np.add(Tc, Tcs), 2)
+
+        # Is superconducting?
+        is_sc = True
+
+        copper = Copper()
+        nbti = NbTi()
+
+        [dsty_cu, resty_cu, c_cu, k_cu] = copper.calc_properties(
+                                                self.Tjoule, RRR, B
+                                                )
+        
+        [dsty_sc, resty_sc, c_sc, k_sc] = nbti.calc_properties(
+                                                self.Tjoule, RRR, B, is_sc
+                                                )
+
+        # Residual resistivity ratio
+        self.RRR = RRR
+        
+        # Cu/Nb-Ti ratio
+        self.ratio_cu_sc = ratio_cu_sc
+
+        # Total conductor diameter [mm]
+        self.d_cond = d_cond
+        
+        # Nb-Ti, copper and total conductor area [m²]
+        self.s_sc = s_sc
+        self.s_cu = s_cu
+        self.s_cond = _np.add(s_sc, s_cu)
+
+        # Nb-Ti and copper area fraction 
+        self.f_sc = _np.divide(s_sc, self.s_cond)
+        self.f_cu = _np.divide(s_cu, self.s_cond)
+        
+        #   Composite density [kg/m³K]
+        self.dsty_comp = _np.add(
+                _np.multiply(self.f_cu, dsty_cu),
+                _np.multiply(self.f_sc, dsty_sc)
+                )
+
+        #   Composite resistivity [Ohm.m]
+        self.resty_comp = _np.divide(
+                                _np.multiply(resty_cu, resty_sc),
+                                _np.add(
+                                    _np.multiply(resty_cu, self.f_sc),
+                                    _np.multiply(resty_sc, self.f_cu)
+                                    )
+                            )
+        
+        #   Composite specific heat [J/kg.K]
+        self.c_comp = _np.add(
+                _np.multiply(self.f_cu, c_cu),
+                _np.multiply(self.f_sc, c_sc)
+                )
+        
+        #   Composite volumetric specific heat [J/m³.K]
+        self.C_comp = _np.add(
+                _np.multiply(_np.multiply(self.f_cu, dsty_cu), c_cu),
+                _np.multiply(_np.multiply(self.f_sc, dsty_sc), c_sc)
+                )
+        
+        #   Composite thermal conductivity [W/m.K]
+        self.k_comp = _np.add(
+                _np.multiply(self.f_cu, k_cu), _np.multiply(self.f_sc, k_sc)
+                )
+
+        self.Jop = _np.divide(Iop, self.s_cu + self.s_sc)
+
+    def calc_area_sc_cu(self, d_cond, ratio_cu_sc, d_isolation=0.0):
+        try:
+            d_cond = _np.subtract(d_cond, d_isolation)
+            s_cond = _np.multiply(_np.pi, _np.power(d_cond*0.5, 2))
+            s_sc = _np.divide(s_cond, _np.add(ratio_cu_sc, 1))
+            s_cu = _np.subtract(s_cond, s_sc)
+            return [s_sc, s_cu]
+        except Exception:
+            _traceback.print_exc(file=_sys.stdout)
+
+    def calc_ratio_cu_sc(self, d_cond, s_sc, d_isolation=0.0):
+        try:
+            d_cond = _np.subtract(d_cond, d_isolation)
+            s_cond = _np.multiply(_np.pi, _np.power(d_cond*0.5, 2))
+            s_cu = _np.subtract(s_cond, s_sc)
+            ratio_cu_sc = _np.subtract(_np.divide(s_cond, s_sc), 1)
+            return [ratio_cu_sc, s_cu]
+        except Exception:
+            _traceback.print_exc(file=_sys.stdout)
+
+
+
 def calc_ratio_cu_sc(d_cond, s_sc, d_isolation=0.0):
     try:
         d_cond = _np.subtract(d_cond, d_isolation)
