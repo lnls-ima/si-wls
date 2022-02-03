@@ -75,6 +75,61 @@ MIITS_table = {
     }
 }
 
+def calc_resistor(I_op, v_max):
+    return v_max / I_op
+
+def calc_hot_spot(copper_area, nbti_area, I_op, tau, t_switch, RRR):
+    # MIITS from circuit analysis
+    copper_area_cm2 = copper_area * 1e4
+    nbti_area_cm2 = nbti_area * 1e4
+    ratio = copper_area_cm2 / nbti_area_cm2
+    miits = _np.power(I_op, 2) * (t_switch + tau/2) * 1e-6
+    gamma = miits / _np.power(copper_area_cm2, 2)
+    # MIITS from composite wire
+    miits_temp_cu = MIITS_table['Cu'][RRR]['T']
+    miits_val_cu = MIITS_table['Cu'][RRR]['MIITS']
+    if (nbti_area_cm2 != 0):
+        miits_temp_nbti = MIITS_table['Nb-Ti'][RRR]['T']
+        miits_val_nbti = MIITS_table['Nb-Ti'][RRR]['MIITS']
+        composite_gamma = [
+            _np.interp(T, miits_temp_cu, miits_val_cu)
+                + _np.divide(
+                    _np.interp(T, miits_temp_nbti, miits_val_nbti),
+                     ratio
+                    )
+            for T in miits_temp_cu
+            ]
+    else:
+        composite_gamma = miits_val_cu
+    # return hot-spot temperature
+    return _np.interp(gamma, composite_gamma, miits_temp_cu)
+
+class Coil:
+    """ Class to hold coil data """
+    def __init__(self, yoke_length=0, yoke_width=0,
+                yoke_border_radius=0, gap=0, coil_width=0,
+                coil_height=0, wire_diameter=0):
+        self.coil_inner_perimeter = (
+            2*_np.pi * (yoke_border_radius + gap)
+            + yoke_length - 2*yoke_border_radius
+            + yoke_width - 2*yoke_border_radius
+        )
+        self.coil_outer_perimeter = (
+            2*_np.pi * (yoke_border_radius + gap + coil_width)
+            + yoke_length - 2*yoke_border_radius
+            + yoke_width - 2*yoke_border_radius
+        )
+        self.avg_perimeter = (
+            2*_np.pi * (yoke_border_radius + gap + coil_width/2)
+            + yoke_length - 2*yoke_border_radius
+            + yoke_width - 2*yoke_border_radius            
+        )
+        self.wires_per_layer = coil_width / wire_diameter
+        self.wire_length_per_layer = (
+            self.wires_per_layer * self.avg_perimeter
+            )
+        self.coil_volume = self.avg_perimeter * coil_width * coil_height
+
 class QuenchZone:
     """ Class to hold quench zone parameters"""
     def __init__(self,
