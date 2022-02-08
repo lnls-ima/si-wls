@@ -108,7 +108,7 @@ class Coil:
     """ Class to hold coil data """
     def __init__(self, yoke_length=0, yoke_width=0,
                 yoke_border_radius=0, gap=0, coil_width=0,
-                coil_height=0, wire_diameter=0):
+                coil_height=0, wire_diameter=0, wire_length=0):
         self.coil_inner_perimeter = (
             2*_np.pi * (yoke_border_radius + gap)
             + yoke_length - 2*yoke_border_radius
@@ -129,6 +129,9 @@ class Coil:
             self.wires_per_layer * self.avg_perimeter
             )
         self.coil_volume = self.avg_perimeter * coil_width * coil_height
+        self.coil_num_layers = _np.floor(
+            wire_length / self.wire_length_per_layer
+        )
 
 class QuenchZone:
     """ Class to hold quench zone parameters"""
