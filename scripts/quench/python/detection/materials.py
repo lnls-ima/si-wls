@@ -89,6 +89,12 @@ class Copper:
             self._specific_heat_data['c']
             )
 
+    def calc_avg_specific_heat(self, T1, T2, num_steps=1000):
+        x = _np.linspace(T1, T2, num=num_steps, endpoint=True)
+        y = _np.array([self.calc_specific_heat(T) for T in x])
+        integral_val = _np.trapz(y, x)
+        return integral_val / (T2 - T1)
+
     def calc_thermal_conductivity(self, T, RRR):
         
         return _np.interp(
@@ -96,6 +102,12 @@ class Copper:
             self._thermal_conductivity_per_rrr_data[RRR]['T'],
             self._thermal_conductivity_per_rrr_data[RRR]['k']
             )
+
+    def calc_avg_thermal_conductivity(self, T1, T2, RRR, num_steps=1000):
+        x = _np.linspace(T1, T2, num=num_steps, endpoint=True)
+        y = _np.array([self.calc_thermal_conductivity(T, RRR) for T in x])
+        integral_val = _np.trapz(y, x)
+        return integral_val / (T2 - T1)
 
     def calc_properties(self, T, RRR, B):
         
@@ -106,6 +118,14 @@ class Copper:
 
         return [dsty, rho, c, k]
 
+    def calc_avg_properties(self, T1, T2, RRR, B):
+        
+        dsty = self.density                                  # [kg/m³]
+        rho = self.calc_resistivity(T2, RRR, B)               # [Ohm.m]
+        c = self.calc_avg_specific_heat(T1, T2)              # [J/kg.K]
+        k = self.calc_avg_thermal_conductivity(T1, T2, RRR)  # [W/m.K]
+
+        return [dsty, rho, c, k]
 
 class NbTi:
     """ Class to hold NbTi properties 
@@ -191,11 +211,23 @@ class NbTi:
                 _np.multiply(0.161, _np.float_(T))
                 )
 
+    def calc_avg_specific_heat(self, T1, T2, B, is_sc, num_steps=1000):
+        x = _np.linspace(T1, T2, num=num_steps, endpoint=True)
+        y = _np.array([self.calc_specific_heat(T, B, is_sc) for T in x])
+        integral_val = _np.trapz(y, x)
+        return integral_val / (T2 - T1)
+
     def calc_thermal_conductivity(self, T):
         # Ref[5] Eq. A.20
         # [W/m.K]
         p = [-5.0e-14, 1.5e-11, 6.0e-9, -3.0e-6, 3.0e-4, 4.56e-2, 6.6e-2]
         return _np.polyval(p,T)
+
+    def calc_avg_thermal_conductivity(self, T1, T2, num_steps=1000):
+        x = _np.linspace(T1, T2, num=num_steps, endpoint=True)
+        y = _np.array([self.calc_thermal_conductivity(T) for T in x])
+        integral_val = _np.trapz(y, x)
+        return integral_val / (T2 - T1)
 
     def calc_properties(self, T, RRR, B, is_sc):
         
@@ -203,6 +235,15 @@ class NbTi:
         rho = self.calc_resistivity(T, is_sc)       # [Ohm.m]
         c = self.calc_specific_heat(T, B, is_sc)    # [J/kg.K]
         k = self.calc_thermal_conductivity(T)       # [W/m.K]
+
+        return [dsty, rho, c, k]
+
+    def calc_avg_properties(self, T1, T2, RRR, B, is_sc):
+        
+        dsty = self.density                                  # [kg/m³]
+        rho = self.calc_resistivity(T2, is_sc)                # [Ohm.m]
+        c = self.calc_avg_specific_heat(T1, T2, B, is_sc)    # [J/kg.K]
+        k = self.calc_avg_thermal_conductivity(T1, T2)       # [W/m.K]
 
         return [dsty, rho, c, k]
 
@@ -228,6 +269,13 @@ class SCWire:
         
         [dsty_sc, resty_sc, c_sc, k_sc] = nbti.calc_properties(
                                                 self.Tjoule, RRR, B, is_sc
+                                                )
+        [avg_dsty_cu, avg_resty_cu, avg_c_cu, avg_k_cu] = copper.calc_avg_properties(
+                                                Top, self.Tjoule, RRR, B
+                                                )
+        
+        [avg_dsty_sc, avg_resty_sc, avg_c_sc, avg_k_sc] = nbti.calc_avg_properties(
+                                                Top, self.Tjoule, RRR, B, is_sc
                                                 )
 
         # Residual resistivity ratio
@@ -268,16 +316,34 @@ class SCWire:
                 _np.multiply(self.f_cu, c_cu),
                 _np.multiply(self.f_sc, c_sc)
                 )
+
+        #   Average composite specific heat [J/kg.K]
+        self.avg_c_comp = _np.add(
+                _np.multiply(self.f_cu, avg_c_cu),
+                _np.multiply(self.f_sc, avg_c_sc)
+                )
         
         #   Composite volumetric specific heat [J/m³.K]
         self.C_comp = _np.add(
                 _np.multiply(_np.multiply(self.f_cu, dsty_cu), c_cu),
                 _np.multiply(_np.multiply(self.f_sc, dsty_sc), c_sc)
                 )
+
+
+        #   Average composite volumetric specific heat [J/m³.K]
+        self.avg_C_comp = _np.add(
+                _np.multiply(_np.multiply(self.f_cu, dsty_cu), avg_c_cu),
+                _np.multiply(_np.multiply(self.f_sc, dsty_sc), avg_c_sc)
+                )
         
         #   Composite thermal conductivity [W/m.K]
         self.k_comp = _np.add(
                 _np.multiply(self.f_cu, k_cu), _np.multiply(self.f_sc, k_sc)
+                )
+
+        #   Average composite thermal conductivity [W/m.K]
+        self.avg_k_comp = _np.add(
+                _np.multiply(self.f_cu, avg_k_cu), _np.multiply(self.f_sc, avg_k_sc)
                 )
 
         self.Jop = _np.divide(Iop, self.s_cu + self.s_sc)
