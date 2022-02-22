@@ -291,7 +291,7 @@ def ellipsoid_vol(a, b):
 def simple_quench_propagation(
         I_op, T_cs, T_op, copper_area, nbti_area, insulator_area,
         inductance, magnet_vol, t_dump=0, R_dump=0, time_step=0.000001, RRR=100,
-        B=0, alpha=0.03, tolerance=1e-6, geometry='ellipsoid'
+        B=0, alpha=0.03, tolerance=1e-6, geometry='ellipsoid', V_ps_max=10
         ):
     """
        Refs.: 
@@ -317,14 +317,29 @@ def simple_quench_propagation(
     # quench evolution output variables
     iter_cnt = 0
     zone_list = []
+    # instant current
     I = []
+    # quench resistance
     R = []
+    # quench resistive voltage
     Vq = []
-    Vd = []
+    # external dump voltage
+    Ve = []
+    # voltage across coil
+    Vc = []
+    # coil inductive voltage
+    Vl = []
+    # voltage across normal zone
+    Vnz = []
+    # quench energy
     Eq = []
+    # hot-spot temperature
     Tmax = []
+    # average normal zone temperature
     Tavg = []
+    # longitudinal normal zone size
     final_zone_transv_radius = []
+    # transverse normal zone size
     final_zone_long_radius = []
     # initial condition
     propagation_end = False
@@ -332,7 +347,10 @@ def simple_quench_propagation(
     I.append(I_op)
     R.append(0)
     Vq.append(0)
-    Vd.append(0)
+    Ve.append(0)
+    Vc.append(0)
+    Vl.append(0)
+    Vnz.append(0)
     Eq.append(0)
     Tmax.append(T_op)
     Tavg.append(T_op)
@@ -384,16 +402,51 @@ def simple_quench_propagation(
     # update current and add dump resistance
     if (iter_cnt*time_step >= t_dump):
         R_total = R_quench + R_dump
-        I_op = I_op - I_op*(R_total/inductance)*time_step
         V_quench = R_quench * I_op
         V_dump = R_dump * I_op
+        V_ps = 0
+        V_c = V_dump - V_ps
+        V_l = V_quench + V_dump - V_ps
+        if geometry == 'ellipsoid':
+            coil_len_ratio = ellipsoid_vol(
+                zone_list[0].long_radius, zone_list[0].transv_radius
+            ) / magnet_vol
+        else:
+            coil_len_ratio = (
+                (
+                    2 * zone_list[0].long_radius
+                    * (copper_area + nbti_area + insulator_area)
+                )
+                / magnet_vol
+            )
+        V_nz = V_l * coil_len_ratio - V_quench
         E_quench += I_op * V_quench * time_step
+        I_op = I_op - I_op*(R_total/inductance)*time_step
     else:
         R_total = R_quench
-        I_op = I_op
         V_quench = R_quench * I_op
         V_dump = 0
         E_quench += I_op * V_quench * time_step
+        # clip power supply voltage if necessary
+        V_ps = R_total * I_op
+        if V_ps > V_ps_max:
+            V_ps = V_ps_max
+        V_c = V_dump - V_ps
+        V_l = V_quench + V_dump - V_ps
+        if geometry == 'ellipsoid':
+            coil_len_ratio = ellipsoid_vol(
+                zone_list[0].long_radius, zone_list[0].transv_radius
+            ) / magnet_vol
+        else:
+            coil_len_ratio = (
+                (
+                    2 * zone_list[0].long_radius
+                    * (copper_area + nbti_area + insulator_area)
+                )
+                / magnet_vol
+            )
+        V_nz = V_l * coil_len_ratio - V_quench
+        I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
     # update current density
     J = I_op / cond_area
     # update prop velocity
@@ -404,7 +457,10 @@ def simple_quench_propagation(
     R.append(R_quench)
     I.append(I_op)
     Vq.append(V_quench)
-    Vd.append(V_dump)
+    Ve.append(V_dump)
+    Vc.append(V_c)
+    Vl.append(V_l)
+    Vnz.append(V_nz)
     Eq.append(E_quench)
     Tmax.append(zone_list[0].T)
     Tavg.append(zone_list[0].T)
@@ -475,18 +531,53 @@ def simple_quench_propagation(
         # update current and add dump resistance
         if (iter_cnt*time_step >= t_dump):
             R_total = R_quench + R_dump
+            V_quench = R_quench * I_op
+            V_dump = R_dump * I_op
+            V_ps = 0
+            V_c = V_dump - V_ps
+            V_l = V_quench + V_dump - V_ps
+            if geometry == 'ellipsoid':
+                coil_len_ratio = ellipsoid_vol(
+                    zone_list[-1].long_radius, zone_list[-1].transv_radius
+                ) / magnet_vol
+            else:
+                coil_len_ratio = (
+                    (
+                        2 * zone_list[-1].long_radius
+                        * (copper_area + nbti_area + insulator_area)
+                    )
+                    / magnet_vol
+                )
+            V_nz = V_l * coil_len_ratio - V_quench
+            E_quench += I_op * V_quench * time_step
             I_op = (
                 I_op - I_op*(R_total/inductance)*time_step
             )
-            V_quench = R_quench * I_op
-            V_dump = R_dump * I_op
-            E_quench += I_op * V_quench * time_step
         else:
             R_total = R_quench
-            I_op = I_op
             V_quench = R_quench * I_op
             V_dump = 0
             E_quench += I_op * V_quench * time_step
+            # clip power supply voltage if necessary
+            V_ps = R_total * I_op
+            if V_ps > V_ps_max:
+                V_ps = V_ps_max
+            V_c = V_dump - V_ps
+            V_l = V_quench + V_dump - V_ps
+            if geometry == 'ellipsoid':
+                coil_len_ratio = ellipsoid_vol(
+                    zone_list[-1].long_radius, zone_list[-1].transv_radius
+                ) / magnet_vol
+            else:
+                coil_len_ratio = (
+                    (
+                        2 * zone_list[-1].long_radius
+                        * (copper_area + nbti_area + insulator_area)
+                    )
+                    / magnet_vol
+                )
+            V_nz = V_l * coil_len_ratio - V_quench
+            I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
         # update current density
         J = I_op / cond_area
         # update prop velocity
@@ -506,7 +597,10 @@ def simple_quench_propagation(
         R.append(R_quench)
         I.append(I_op)
         Vq.append(V_quench)
-        Vd.append(V_dump)
+        Ve.append(V_dump)
+        Vc.append(V_c)
+        Vl.append(V_l)
+        Vnz.append(V_nz)
         Eq.append(E_quench)
         Tmax.append(zone_list[0].T)
         Tavg.append(T_weighted_avg)
@@ -540,10 +634,34 @@ def simple_quench_propagation(
     _plt.ylabel('Voltage [V]', fontsize=14)
     _plt.minorticks_on()
     _plt.grid(which='both', axis='both')
-    # Vd plot
+    # Ve plot
     _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Vd, '-x')
+    _plt.plot(time_axis, Ve, '-x')
     _plt.title('Dump voltage')
+    _plt.xlabel('Time [sec]', fontsize=14)
+    _plt.ylabel('Voltage [V]', fontsize=14)
+    _plt.minorticks_on()
+    _plt.grid(which='both', axis='both')
+    # Vc plot
+    _plt.figure(figsize=[9.6, 7.2])
+    _plt.plot(time_axis, Vc, '-x')
+    _plt.title('Voltage at coil terminals')
+    _plt.xlabel('Time [sec]', fontsize=14)
+    _plt.ylabel('Voltage [V]', fontsize=14)
+    _plt.minorticks_on()
+    _plt.grid(which='both', axis='both')
+    # Vl plot
+    _plt.figure(figsize=[9.6, 7.2])
+    _plt.plot(time_axis, Vl, '-x')
+    _plt.title('Inductive coil voltage')
+    _plt.xlabel('Time [sec]', fontsize=14)
+    _plt.ylabel('Voltage [V]', fontsize=14)
+    _plt.minorticks_on()
+    _plt.grid(which='both', axis='both')
+    # Vnz plot
+    _plt.figure(figsize=[9.6, 7.2])
+    _plt.plot(time_axis, Vnz, '-x')
+    _plt.title('Voltage across normal zone')
     _plt.xlabel('Time [sec]', fontsize=14)
     _plt.ylabel('Voltage [V]', fontsize=14)
     _plt.minorticks_on()
@@ -608,7 +726,7 @@ if __name__ == "__main__":
     #alpha = 0.03
     #B = 6
     #RRR = 50
-    #geometry = 'line'
+    #geometry = 'ellipsoid'
     #magnet_vol = 0.019502
     #curr_tol = 1
 
@@ -630,11 +748,13 @@ if __name__ == "__main__":
     geometry = 'line'
     magnet_vol = 616 * (s_cu + s_nbti)
     curr_tol = 1
+    max_ps_voltage = 10
 
     simple_quench_propagation(
         I_op=Iop, T_cs=Tcs, T_op=Top, copper_area=s_cu,
         nbti_area=s_nbti, insulator_area=s_insulator,
         inductance=L, magnet_vol=magnet_vol, t_dump=t_dump,
         R_dump=R_dump, time_step=time_step, RRR=RRR,
-        B=B, alpha=alpha, tolerance=curr_tol, geometry=geometry
+        B=B, alpha=alpha, tolerance=curr_tol, geometry=geometry,
+        V_ps_max = max_ps_voltage
         )
