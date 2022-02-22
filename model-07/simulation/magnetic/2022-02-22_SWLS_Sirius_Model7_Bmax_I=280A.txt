@@ -1,0 +1,2 @@
+Bp [T]		Bmax [T]	Margin [%]	FWHM [mm]
+-7,0304		6,2365		22,24		28,4
