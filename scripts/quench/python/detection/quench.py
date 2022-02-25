@@ -731,19 +731,39 @@ if __name__ == "__main__":
     #curr_tol = 1
 
     # SWLS - Model V5.0
-    Iop = 275
-    Tcs = 6.06
-    Top = 5.0
+    #Iop = 275
+    #Tcs = 6.06
+    #Top = 5.0
+    #s_cu = 2.682e-7
+    #s_nbti = 2.98e-7
+    ##s_insulator = 6.308e-8
+    #s_insulator = 0
+    #L = 0.0997
+    #t_dump = 0.1
+    #R_dump = 2.18
+    #time_step = 0.0001
+    #alpha = 0.03
+    #B = 5.12
+    #RRR = 50
+    #geometry = 'line'
+    #magnet_vol = 616 * (s_cu + s_nbti)
+    #curr_tol = 1
+    #max_ps_voltage = 10
+
+    # SWLS - Model V7.0
+    Iop = 280
+    Tcs = 5.50
+    Top = 4.2
     s_cu = 2.682e-7
     s_nbti = 2.98e-7
     #s_insulator = 6.308e-8
     s_insulator = 0
-    L = 0.0997
+    L = 0.096
     t_dump = 0.1
-    R_dump = 2.18
+    R_dump = 2.14
     time_step = 0.0001
     alpha = 0.03
-    B = 5.12
+    B = 6.24
     RRR = 50
     geometry = 'line'
     magnet_vol = 616 * (s_cu + s_nbti)
