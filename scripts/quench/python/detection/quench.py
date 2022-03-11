@@ -280,7 +280,7 @@ def geometric_factor(
         return len_copper / copper_area
     elif geometry == 'line':
         # consider propagation as one dimensional
-        return 2*(long_radius - hole_long_radius) / copper_area 
+        return 2*(long_radius - hole_long_radius) / copper_area
     else:
         raise ValueError('Invalid geometry: {0}'.format(geometry))
 
@@ -290,12 +290,15 @@ def ellipsoid_vol(a, b):
 
 def simple_quench_propagation(
         I_op, T_cs, T_op, copper_area, nbti_area, insulator_area,
-        inductance, magnet_vol, t_dump=0, R_dump=0, time_step=0.000001, RRR=100,
-        B=0, alpha=0.03, tolerance=1e-6, geometry='ellipsoid', V_ps_max=10
+        inductance, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
+        time_step=0.000001, RRR=100, B=0, alpha=0.03, tolerance=1e-6,
+        geometry='ellipsoid', V_ps_max=10
         ):
     """
        Refs.: 
        [1] M. Wilson, "Lecture 4: Quenching and Protection", JUAS, February 2016. """
+    # init dump time to infinity until detection
+    t_resp = _np.inf
     # wire properties
     wire = _materials.SCWire(
         {
@@ -399,10 +402,15 @@ def simple_quench_propagation(
         0, 0, copper_area, nbti_area, insulator_area, geometry
         )
     R_quench = zone_list[0].R
+    # update quench voltage and energy
+    V_quench = R_quench * I_op
+    E_quench += I_op * V_quench * time_step
+    # update dump time if detection happened
+    if V_quench >= det_tresh:
+        t_resp = iter_cnt*time_step + t_valid + t_act
     # update current and add dump resistance
-    if (iter_cnt*time_step >= t_dump):
+    if (iter_cnt*time_step >= t_resp):
         R_total = R_quench + R_dump
-        V_quench = R_quench * I_op
         V_dump = R_dump * I_op
         V_ps = 0
         V_c = V_dump - V_ps
@@ -420,13 +428,10 @@ def simple_quench_propagation(
                 / magnet_vol
             )
         V_nz = V_l * coil_len_ratio - V_quench
-        E_quench += I_op * V_quench * time_step
         I_op = I_op - I_op*(R_total/inductance)*time_step
     else:
         R_total = R_quench
-        V_quench = R_quench * I_op
         V_dump = 0
-        E_quench += I_op * V_quench * time_step
         # clip power supply voltage if necessary
         V_ps = R_total * I_op
         if V_ps > V_ps_max:
@@ -528,10 +533,15 @@ def simple_quench_propagation(
                 )
             # add to R quench
             R_quench += zone.R
+        # update quench voltage and energy
+        V_quench = R_quench * I_op
+        E_quench += I_op * V_quench * time_step
+        # update dump time if detection happened
+        if t_resp == _np.inf and V_quench >= det_tresh:
+            t_resp = iter_cnt*time_step + t_valid + t_act
         # update current and add dump resistance
-        if (iter_cnt*time_step >= t_dump):
+        if (iter_cnt*time_step >= t_resp):
             R_total = R_quench + R_dump
-            V_quench = R_quench * I_op
             V_dump = R_dump * I_op
             V_ps = 0
             V_c = V_dump - V_ps
@@ -549,15 +559,12 @@ def simple_quench_propagation(
                     / magnet_vol
                 )
             V_nz = V_l * coil_len_ratio - V_quench
-            E_quench += I_op * V_quench * time_step
             I_op = (
                 I_op - I_op*(R_total/inductance)*time_step
             )
         else:
             R_total = R_quench
-            V_quench = R_quench * I_op
             V_dump = 0
-            E_quench += I_op * V_quench * time_step
             # clip power supply voltage if necessary
             V_ps = R_total * I_op
             if V_ps > V_ps_max:
@@ -720,7 +727,7 @@ if __name__ == "__main__":
     #s_nbti = 2.1e-7
     #s_insulator = 3.47e-7
     #L = 4.32
-    #t_dump = 0.2
+    #t_act = 0.2
     #R_dump = 4.6875
     #time_step = 0.001
     #alpha = 0.03
@@ -731,50 +738,55 @@ if __name__ == "__main__":
     #curr_tol = 1
 
     # SWLS - Model V5.0
-    #Iop = 275
-    #Tcs = 6.06
-    #Top = 5.0
-    #s_cu = 2.682e-7
-    #s_nbti = 2.98e-7
-    ##s_insulator = 6.308e-8
-    #s_insulator = 0
-    #L = 0.0997
-    #t_dump = 0.1
-    #R_dump = 2.18
-    #time_step = 0.0001
-    #alpha = 0.03
-    #B = 5.12
-    #RRR = 50
-    #geometry = 'line'
-    #magnet_vol = 616 * (s_cu + s_nbti)
-    #curr_tol = 1
-    #max_ps_voltage = 10
-
-    # SWLS - Model V7.0
-    Iop = 280
-    Tcs = 5.50
-    Top = 4.2
+    Iop = 275
+    Tcs = 6.06
+    Top = 5.0
     s_cu = 2.682e-7
     s_nbti = 2.98e-7
     #s_insulator = 6.308e-8
     s_insulator = 0
-    L = 0.096
-    t_dump = 0.1
-    R_dump = 2.14
-    time_step = 0.0001
+    L = 0.0997
+    t_valid = 0.04
+    t_act = 0.02
+    det_tresh = 78.0
+    R_dump = 2.18
+    time_step = 0.001
     alpha = 0.03
-    B = 6.24
+    B = 5.12
     RRR = 50
-    geometry = 'line'
+    geometry = 'ellipsoid'
     magnet_vol = 616 * (s_cu + s_nbti)
     curr_tol = 1
     max_ps_voltage = 10
 
+    # SWLS - Model V7.0
+    #Iop = 280
+    #Tcs = 5.50
+    #Top = 4.2
+    #s_cu = 2.682e-7
+    #s_nbti = 2.98e-7
+    ##s_insulator = 6.308e-8
+    #s_insulator = 0
+    #L = 0.096
+    #t_valid = 0.04
+    #t_act = 0.02
+    #det_tresh = 0.1
+    #R_dump = 2.14
+    #time_step = 0.0001
+    #alpha = 0.03
+    #B = 6.24
+    #RRR = 50
+    #geometry = 'line'
+    #magnet_vol = 564 * (s_cu + s_nbti)
+    #curr_tol = 1
+    #max_ps_voltage = 10
+
     simple_quench_propagation(
         I_op=Iop, T_cs=Tcs, T_op=Top, copper_area=s_cu,
         nbti_area=s_nbti, insulator_area=s_insulator,
-        inductance=L, magnet_vol=magnet_vol, t_dump=t_dump,
-        R_dump=R_dump, time_step=time_step, RRR=RRR,
-        B=B, alpha=alpha, tolerance=curr_tol, geometry=geometry,
+        inductance=L, magnet_vol=magnet_vol, t_valid=t_valid,
+        t_act=t_act, det_tresh=det_tresh, R_dump=R_dump,
+        time_step=time_step, RRR=RRR, B=B, alpha=alpha,
+        tolerance=curr_tol, geometry=geometry,
         V_ps_max = max_ps_voltage
         )
