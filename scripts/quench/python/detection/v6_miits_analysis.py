@@ -17,7 +17,7 @@ dict_high_field_parameters = {
     'B' : 5.33,
 
     # Operating SC temperature [K]
-    'Top' : 5.0,
+    'Top' : 4.2,
 
     # Critical temperature [K]
     'Tc' : 9.2,
@@ -38,7 +38,7 @@ dict_high_field_parameters = {
 # Maximum voltage across dump resistor [V]
 Vmax = 600
 # Magnet Inductance [H]
-L = 0.108
+L = 0.1065
 
 figure_size = [9.6, 7.2]
 
