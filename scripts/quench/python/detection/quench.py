@@ -292,7 +292,7 @@ def simple_quench_propagation(
         I_op, T_cs, T_op, copper_area, nbti_area, insulator_area,
         inductance, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
         time_step=0.000001, RRR=100, B=0, alpha=0.03, tolerance=1e-6,
-        geometry='ellipsoid', V_ps_max=10
+        geometry='ellipsoid', V_ps_max=10, t_ps=0, V_fw_diode=0
         ):
     """
        Refs.: 
@@ -336,6 +336,8 @@ def simple_quench_propagation(
     Vnz = []
     # quench energy
     Eq = []
+    # power supply sourced energy
+    Eps = []
     # hot-spot temperature
     Tmax = []
     # average normal zone temperature
@@ -347,6 +349,7 @@ def simple_quench_propagation(
     # initial condition
     propagation_end = False
     E_quench = 0
+    E_ps = 0
     I.append(I_op)
     R.append(0)
     Vq.append(0)
@@ -355,6 +358,7 @@ def simple_quench_propagation(
     Vl.append(0)
     Vnz.append(0)
     Eq.append(0)
+    Eps.append(0)
     Tmax.append(T_op)
     Tavg.append(T_op)
     final_zone_long_radius.append(0)
@@ -408,11 +412,18 @@ def simple_quench_propagation(
     # update dump time if detection happened
     if V_quench >= det_tresh:
         t_resp = iter_cnt*time_step + t_valid + t_act
+        t_resp_ps = iter_cnt*time_step + t_valid + t_ps
     # update current and add dump resistance
     if (iter_cnt*time_step >= t_resp):
         R_total = R_quench + R_dump
         V_dump = R_dump * I_op
-        V_ps = 0
+        if (iter_cnt*time_step < t_resp_ps):
+            # clip power supply voltage if necessary
+            V_ps = R_total * I_op
+            if V_ps > V_ps_max:
+                V_ps = V_ps_max
+        else:
+            V_ps = -V_fw_diode
         V_c = V_dump - V_ps
         V_l = V_quench + V_dump - V_ps
         if geometry == 'ellipsoid':
@@ -428,14 +439,18 @@ def simple_quench_propagation(
                 / magnet_vol
             )
         V_nz = V_l * coil_len_ratio - V_quench
-        I_op = I_op - I_op*(R_total/inductance)*time_step
+        E_ps += I_op * V_ps * time_step
+        I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
     else:
         R_total = R_quench
         V_dump = 0
-        # clip power supply voltage if necessary
-        V_ps = R_total * I_op
-        if V_ps > V_ps_max:
-            V_ps = V_ps_max
+        if (iter_cnt*time_step < t_resp_ps):
+            # clip power supply voltage if necessary
+            V_ps = R_total * I_op
+            if V_ps > V_ps_max:
+                V_ps = V_ps_max
+        else:
+            V_ps = -V_fw_diode
         V_c = V_dump - V_ps
         V_l = V_quench + V_dump - V_ps
         if geometry == 'ellipsoid':
@@ -451,6 +466,7 @@ def simple_quench_propagation(
                 / magnet_vol
             )
         V_nz = V_l * coil_len_ratio - V_quench
+        E_ps += I_op * V_ps * time_step
         I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
     # update current density
     J = I_op / cond_area
@@ -467,6 +483,7 @@ def simple_quench_propagation(
     Vl.append(V_l)
     Vnz.append(V_nz)
     Eq.append(E_quench)
+    Eps.append(E_ps)
     Tmax.append(zone_list[0].T)
     Tavg.append(zone_list[0].T)
     final_zone_transv_radius.append(zone_list[0].transv_radius)
@@ -539,11 +556,18 @@ def simple_quench_propagation(
         # update dump time if detection happened
         if t_resp == _np.inf and V_quench >= det_tresh:
             t_resp = iter_cnt*time_step + t_valid + t_act
+            t_resp_ps = iter_cnt*time_step + t_valid + t_ps
         # update current and add dump resistance
         if (iter_cnt*time_step >= t_resp):
             R_total = R_quench + R_dump
             V_dump = R_dump * I_op
-            V_ps = 0
+            if (iter_cnt*time_step < t_resp_ps):
+                # clip power supply voltage if necessary
+                V_ps = R_total * I_op
+                if V_ps > V_ps_max:
+                    V_ps = V_ps_max
+            else:
+                V_ps = -V_fw_diode
             V_c = V_dump - V_ps
             V_l = V_quench + V_dump - V_ps
             if geometry == 'ellipsoid':
@@ -559,16 +583,18 @@ def simple_quench_propagation(
                     / magnet_vol
                 )
             V_nz = V_l * coil_len_ratio - V_quench
-            I_op = (
-                I_op - I_op*(R_total/inductance)*time_step
-            )
+            E_ps += I_op * V_ps * time_step
+            I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
         else:
             R_total = R_quench
             V_dump = 0
-            # clip power supply voltage if necessary
-            V_ps = R_total * I_op
-            if V_ps > V_ps_max:
-                V_ps = V_ps_max
+            if (iter_cnt*time_step < t_resp_ps):
+                # clip power supply voltage if necessary
+                V_ps = R_total * I_op
+                if V_ps > V_ps_max:
+                    V_ps = V_ps_max
+            else:
+                V_ps = -V_fw_diode
             V_c = V_dump - V_ps
             V_l = V_quench + V_dump - V_ps
             if geometry == 'ellipsoid':
@@ -584,6 +610,7 @@ def simple_quench_propagation(
                     / magnet_vol
                 )
             V_nz = V_l * coil_len_ratio - V_quench
+            E_ps += I_op * V_ps * time_step
             I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
         # update current density
         J = I_op / cond_area
@@ -609,6 +636,7 @@ def simple_quench_propagation(
         Vl.append(V_l)
         Vnz.append(V_nz)
         Eq.append(E_quench)
+        Eps.append(E_ps)
         Tmax.append(zone_list[0].T)
         Tavg.append(T_weighted_avg)
         final_zone_transv_radius.append(zone_list[-1].transv_radius)
@@ -681,6 +709,14 @@ def simple_quench_propagation(
     _plt.ylabel('Energy [J]', fontsize=14)
     _plt.minorticks_on()
     _plt.grid(which='both', axis='both')
+    # Eps plot
+    _plt.figure(figsize=[9.6, 7.2])
+    _plt.plot(time_axis, Eps, '-x')
+    _plt.title('Power supply energy')
+    _plt.xlabel('Time [sec]', fontsize=14)
+    _plt.ylabel('Energy [J]', fontsize=14)
+    _plt.minorticks_on()
+    _plt.grid(which='both', axis='both')
     # Tmax plot
     _plt.figure(figsize=[9.6, 7.2])
     _plt.plot(time_axis, Tmax, '-x')
@@ -716,7 +752,11 @@ def simple_quench_propagation(
     # show plots
     _plt.show()
     # Success
-    return
+    return (
+        R, I, Vq, Ve, Vc, Vl, Vnz, Eq, Eps, Tmax, Tavg,
+        final_zone_transv_radius, final_zone_long_radius,
+        time_axis, iter_cnt
+        )
 
 if __name__ == "__main__":
     # Superbend
