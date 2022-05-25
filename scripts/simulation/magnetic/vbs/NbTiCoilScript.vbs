@@ -20,7 +20,7 @@ Sub NbTiCoil()
 	If isNull(DocumentName) Then Exit Sub End If
 
 	Dim BoxTitle
-	BoxTitle = "Max. Field in the Coil"
+	BoxTitle = "Results for superconducting EM Design"
 
 	nproblem = GetProblemNumber(Doc, BoxTitle)
 	If isNull(nproblem) Then Exit Sub End If
@@ -47,9 +47,9 @@ Sub NbTiCoil()
 
 	Set objFile = objFSO.CreateTextFile(FullFilename, True)
 
-	objFile.Write "Bp [T]" & vbTab & vbTab & "Bmax [T]" & vbTab & "Margin [%]" & vbTab & "FWHM [mm]" & vbCrlf
+	objFile.Write "Bp [T]" & vbTab & vbTab & "Bmax [T]" & vbTab & "Margin [%]" & vbTab & "HFIntBy [T.cm]" & vbCrlf
 
-	text = "Bp [T]" & vbTab & vbTab & "Bmax [T]" & vbTab & vbTab & "Margin [%]" & vbTab & "FWHM [mm]" 
+	text = "Bp [T]" & vbTab & vbTab & "Bmax [T]" & vbTab & vbTab & "Margin [%]" & vbTab & "HFIntBy [T.cm]"
 	
 	For i=0 to Ubound(nproblems)
 	 	np = nproblems(i)
@@ -140,24 +140,43 @@ Sub NbTiCoil()
 
 		Marg = 100*(1-Bcoil/Bc)
 
-		For m=0 to nptsfwhm
-			s = StepFwhm*m
-			
+		'High Field Integral calculate
+		HFintby = 0
+		For p=0 to nptsfwhm
+			s = StepFwhm*p
+			s1 = StepFwhm*(p+1)
+
 			Call Doc.getSolution.getSystemField(Mesh, "B y").getFieldAtPoint(0, 0, s, by)
-			If (Abs(by(0)) < Abs((Bypeak(0)/2))) Then
-				fwhm = 2*s
+			Call Doc.getSolution.getSystemField(Mesh, "B y").getFieldAtPoint(0, 0, s1, by1)
+			
+			If (by(0) > 0) Then
 				Exit For
 			End If
+			
+			HFintby = HFintby + (by1(0)+by(0))*(StepFwhm)*0.1
 		Next
+
+		'Total Integral calculate
+		'Intby = 0
+		'For p=0 to (nptsfwhm-1)
+			's = StepFwhm*p
+			's1 = StepFwhm*(p+1)
+
+			'Call Doc.getSolution.getSystemField(Mesh, "B y").getFieldAtPoint(0, 0, s, by)
+			'Call Doc.getSolution.getSystemField(Mesh, "B y").getFieldAtPoint(0, 0, s1, by1)
+				
+			'Intby = Intby + (by1(0)+by(0))*(StepFwhm)*1000
+		'Next
 
 		sp = Round(Bypeak(0), 4)
 		sb = Round(BMax, 4)
 		sbm = Round(Marg, 2)
-		sfw = Round(fwhm, 1)
+		shfintby = Round(HFintby, 2)
+		'sintby = Round(Intby, 1)
 
-		objFile.Write sp & vbTab & vbTab & sb & vbTab & vbTab & sbm & vbTab & vbTab & sfw & vbCrlf
+		objFile.Write sp & vbTab & vbTab & sb & vbTab & vbTab & sbm & vbTab & vbTab & shfintby & vbCrlf
 
-		text = text & vbCrLf & vbCrLf & sp & vbTab & vbTab & sb & vbTab & vbTab & sbm & vbTab & vbTab & sfw & vbCrlf
+		text = text & vbCrLf & vbCrLf & sp & vbTab & vbTab & sb & vbTab & vbTab & sbm & vbTab & vbTab & shfintby & vbCrlf
 
 	Next
 
