@@ -314,7 +314,7 @@ def ellipsoid_vol(a, b):
 
 def simple_quench_propagation(
         I_op, T_cs, T_op, copper_area, nbti_area, insulator_area,
-        inductance, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
+        inductanceI, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
         time_step=0.000001, RRR=100, B=0, alpha=0.03, tolerance=1e-6,
         geometry='ellipsoid', V_ps_max=10, t_ps=0, V_fw_diode=0
         ):
@@ -340,6 +340,10 @@ def simple_quench_propagation(
             'L': inductance
         }
     )
+    
+    def inductance(L,I):
+        return _np.interp(I,[k for k in L.keys()],[l for l in L.values()])
+
     T_joule = wire.Tjoule
     cond_area = _np.add(copper_area, nbti_area)
     # quench evolution output variables
@@ -460,12 +464,13 @@ def simple_quench_propagation(
                 (
                     2 * zone_list[0].long_radius
                     * (copper_area + nbti_area + insulator_area)
-                )
                 / magnet_vol
+                )
             )
         V_nz = V_l * coil_len_ratio - V_quench
         E_ps += I_op * V_ps * time_step
-        I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
+        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
+            * time_step
     else:
         R_total = R_quench
         V_dump = 0
@@ -492,7 +497,8 @@ def simple_quench_propagation(
             )
         V_nz = V_l * coil_len_ratio - V_quench
         E_ps += I_op * V_ps * time_step
-        I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
+        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
+            * time_step
     # update current density
     J = I_op / cond_area
     # update prop velocity
@@ -609,7 +615,8 @@ def simple_quench_propagation(
                 )
             V_nz = V_l * coil_len_ratio - V_quench
             E_ps += I_op * V_ps * time_step
-            I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
+            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
+                * time_step
         else:
             R_total = R_quench
             V_dump = 0
@@ -636,7 +643,8 @@ def simple_quench_propagation(
                 )
             V_nz = V_l * coil_len_ratio - V_quench
             E_ps += I_op * V_ps * time_step
-            I_op = I_op - ((I_op*R_total - V_ps)/inductance)*time_step
+            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
+                * time_step
         # update current density
         J = I_op / cond_area
         # update prop velocity
@@ -795,6 +803,8 @@ if __name__ == "__main__":
     #s_nbti = 2.1e-7
     #s_insulator = 3.47e-7
     #L = 4.32
+    # L_cte = {0: L, 124: L}
+    # L_I = {0: L, 124: L}
     #t_act = 0.2
     #R_dump = 4.6875
     #time_step = 0.001
@@ -814,11 +824,13 @@ if __name__ == "__main__":
     # #s_insulator = 6.308e-8
     # s_insulator = 0
     # L = 0.0997
+    # L_cte = {0: L, 275: L}
+    # L_I = {0: L, 275: L}
     # t_valid = 0.04
     # t_act = 0.02
     # det_tresh = 78.0
     # R_dump = 2.18
-    # time_step = 0.01
+    # time_step = 0.001
     # alpha = 0.03
     # B = 5.12
     # RRR = 50
@@ -828,32 +840,58 @@ if __name__ == "__main__":
     # curr_tol = 1
     # max_ps_voltage = 10
 
-    # SWLS - Model V7.0
-    Iop = 280
-    Tcs = 5.50
+    # SWLS - Model V6.0
+    Iop = 240
+    Tcs = 6.08
     Top = 4.2
     s_cu = 2.682e-7
     s_nbti = 2.98e-7
     #s_insulator = 6.308e-8
     s_insulator = 0
-    L = 0.096
-    t_valid = 0.04
-    t_act = 0.02
+    L = 0.1065
+    L_cte = {0: L, 240: L}
+    L_I = {0: 0.300, 24: 0.2583, 48: 0.1899, 72: 0.1558, 96: 0.13563, 120: 0.1256, 144: 0.1188, 168: 0.1142, 192: 0.1109, 216: 0.1084, 240: L}
+    t_valid = 0.1
+    t_act = 0.09
     det_tresh = 0.1
-    R_dump = 2.14
+    R_dump = 2.5
     time_step = 0.001
     alpha = 0.03
-    B = 6.24
+    B = 5.33
     RRR = 50
     geometry = 'line'
     magnet_vol = 564 * (s_cu + s_nbti)
     curr_tol = 1
     max_ps_voltage = 10
 
+    # SWLS - Model V7.0
+    # Iop = 280
+    # Tcs = 5.50
+    # Top = 4.2
+    # s_cu = 2.682e-7
+    # s_nbti = 2.98e-7
+    # #s_insulator = 6.308e-8
+    # s_insulator = 0
+    # L = 0.096
+    # L_cte = {0: L, 280: L}
+    # L_I = {0: L, 280: L}
+    # t_valid = 0.04
+    # t_act = 0.02
+    # det_tresh = 0.1
+    # R_dump = 2.14
+    # time_step = 0.0001
+    # alpha = 0.03
+    # B = 6.24
+    # RRR = 50
+    # geometry = 'line'
+    # magnet_vol = 564 * (s_cu + s_nbti)
+    # curr_tol = 1
+    # max_ps_voltage = 10
+
     simple_quench_propagation(
         I_op=Iop, T_cs=Tcs, T_op=Top, copper_area=s_cu,
         nbti_area=s_nbti, insulator_area=s_insulator,
-        inductance=L, magnet_vol=magnet_vol, t_valid=t_valid,
+        inductanceI=L_I, magnet_vol=magnet_vol, t_valid=t_valid,
         t_act=t_act, det_tresh=det_tresh, R_dump=R_dump,
         time_step=time_step, RRR=RRR, B=B, alpha=alpha,
         tolerance=curr_tol, geometry=geometry,

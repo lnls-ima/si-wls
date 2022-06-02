@@ -1,3 +1,4 @@
 *.py[cod]
 *.asv
+*.bak
 __pycache__/
