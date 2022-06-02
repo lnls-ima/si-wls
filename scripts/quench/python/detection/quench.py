@@ -337,7 +337,7 @@ def simple_quench_propagation(
                 (copper_area+nbti_area+insulator_area)
                 /_np.pi
                 ),
-            'L': inductance
+            'L': inductanceI
         }
     )
     
@@ -469,8 +469,7 @@ def simple_quench_propagation(
             )
         V_nz = V_l * coil_len_ratio - V_quench
         E_ps += I_op * V_ps * time_step
-        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
-            * time_step
+        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
     else:
         R_total = R_quench
         V_dump = 0
@@ -497,8 +496,7 @@ def simple_quench_propagation(
             )
         V_nz = V_l * coil_len_ratio - V_quench
         E_ps += I_op * V_ps * time_step
-        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
-            * time_step
+        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
     # update current density
     J = I_op / cond_area
     # update prop velocity
@@ -615,8 +613,7 @@ def simple_quench_propagation(
                 )
             V_nz = V_l * coil_len_ratio - V_quench
             E_ps += I_op * V_ps * time_step
-            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
-                * time_step
+            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
         else:
             R_total = R_quench
             V_dump = 0
@@ -643,8 +640,7 @@ def simple_quench_propagation(
                 )
             V_nz = V_l * coil_len_ratio - V_quench
             E_ps += I_op * V_ps * time_step
-            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op))
-                * time_step
+            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
         # update current density
         J = I_op / cond_area
         # update prop velocity
