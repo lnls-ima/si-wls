@@ -2,7 +2,6 @@
 
 import detection as _detection
 import materials as _materials
-import plot_gen as _plot_gen
 
 import numpy as _np
 import matplotlib.pyplot as _plt
@@ -11,7 +10,7 @@ import matplotlib.pyplot as _plt
 dict_high_field_parameters = {
 
     # Operating current [A]
-    'Iop' : 128,
+    'Iop' : 275,
 
     # Operating field [T]
     'B' : [0, 6],
@@ -23,30 +22,23 @@ dict_high_field_parameters = {
     'Tc' : 9.2,
 
     # Current-sharing temperature [K]
-    'Tcs' : 6,
+    'Tcs' : 6.06,
 
     # Residual resistivity ratio
-    'RRR' : 100,
+    'RRR' : 50,
 
     # Cu/Nb-Ti ratio
-    'ratio_cu_sc' : 1.4,
+    'ratio_cu_sc' : 0.9,
 
     # Total conductor diameter [m]
-    'd_cond' : 0.8e-3,
+    'd_cond' : 0.85e-3,
 
     # Magnet inductance [H]
-    'L' : 4.32
+    'L' : 0.0997
 }
     
-def calc_detection_voltage(vq,rho,tqd,Io,Acu):
-    try:
-        R = _np.multiply(_np.multiply(vq, tqd), _np.divide(rho, Acu))
-        return _np.multiply(R, Io)
-    except Exception:
-        _traceback.print_exc(file=_sys.stdout)
-
 if __name__ == "__main__":
-    
+  
     wire = _materials.SCWire(dict_high_field_parameters)
 
     print('\n *** Operation conditions ***\n')
