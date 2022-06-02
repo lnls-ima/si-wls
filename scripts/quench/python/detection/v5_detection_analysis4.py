@@ -31,7 +31,10 @@ dict_high_field_parameters = {
     'ratio_cu_sc' : 0.9,
 
     # Total conductor diameter [m]
-    'd_cond' : 8.5e-4
+    'd_cond' : 8.5e-4,
+
+    # Magnet inductance [H]
+    'L' : 0.0997
 }
     
 if __name__ == "__main__":

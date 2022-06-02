@@ -104,6 +104,30 @@ def calc_hot_spot(copper_area, nbti_area, I_op, tau, t_switch, RRR):
     # return hot-spot temperature
     return _np.interp(gamma, composite_gamma, miits_temp_cu)
 
+def calc_dissipation(t_det, Iop, L, rho, R_dump, s_cond, v_prop):
+
+    duration_ms = 500
+    t = [i/1000 for i in range(duration_ms)]
+        
+    I = []
+    P = []
+    E = []
+
+    for i,t_i in enumerate(t):
+        
+        Rq = rho*v_prop*t_i / s_cond
+
+        if t_i < t_det:
+            i_t = Iop
+            
+        else:
+            tau = L/(R_dump + Rq)
+            i_t = Iop * _np.exp(-(t_i-t_det)/tau)
+
+        I.append(i_t)
+        P.append(Rq * i_t * i_t)
+        E.append(_np.trapz(P,t[:i]))
+
 class Coil:
     """ Class to hold coil data """
     def __init__(self, yoke_length=0, yoke_width=0,
@@ -312,7 +336,8 @@ def simple_quench_propagation(
             'd_cond': 2*_np.sqrt(
                 (copper_area+nbti_area+insulator_area)
                 /_np.pi
-                )
+                ),
+            'L': inductance
         }
     )
     T_joule = wire.Tjoule
@@ -751,6 +776,9 @@ def simple_quench_propagation(
     _plt.grid(which='both', axis='both')
     # show plots
     _plt.show()
+    # DEBUG
+    print('num iter = {0}'.format(iter_cnt))
+    print('max temp = {0}'.format(zone_list[0].T))
     # Success
     return (
         R, I, Vq, Ve, Vc, Vl, Vnz, Eq, Eps, Tmax, Tavg,
@@ -778,48 +806,49 @@ if __name__ == "__main__":
     #curr_tol = 1
 
     # SWLS - Model V5.0
-    Iop = 275
-    Tcs = 6.06
-    Top = 5.0
+    # Iop = 275
+    # Tcs = 6.06
+    # Top = 5.0
+    # s_cu = 2.682e-7
+    # s_nbti = 2.98e-7
+    # #s_insulator = 6.308e-8
+    # s_insulator = 0
+    # L = 0.0997
+    # t_valid = 0.04
+    # t_act = 0.02
+    # det_tresh = 78.0
+    # R_dump = 2.18
+    # time_step = 0.01
+    # alpha = 0.03
+    # B = 5.12
+    # RRR = 50
+    # geometry = 'ellipsoid'
+    # geometry = 'line'
+    # magnet_vol = 616 * (s_cu + s_nbti)
+    # curr_tol = 1
+    # max_ps_voltage = 10
+
+    # SWLS - Model V7.0
+    Iop = 280
+    Tcs = 5.50
+    Top = 4.2
     s_cu = 2.682e-7
     s_nbti = 2.98e-7
     #s_insulator = 6.308e-8
     s_insulator = 0
-    L = 0.0997
+    L = 0.096
     t_valid = 0.04
     t_act = 0.02
-    det_tresh = 78.0
-    R_dump = 2.18
+    det_tresh = 0.1
+    R_dump = 2.14
     time_step = 0.001
     alpha = 0.03
-    B = 5.12
+    B = 6.24
     RRR = 50
-    geometry = 'ellipsoid'
-    magnet_vol = 616 * (s_cu + s_nbti)
+    geometry = 'line'
+    magnet_vol = 564 * (s_cu + s_nbti)
     curr_tol = 1
     max_ps_voltage = 10
-
-    # SWLS - Model V7.0
-    #Iop = 280
-    #Tcs = 5.50
-    #Top = 4.2
-    #s_cu = 2.682e-7
-    #s_nbti = 2.98e-7
-    ##s_insulator = 6.308e-8
-    #s_insulator = 0
-    #L = 0.096
-    #t_valid = 0.04
-    #t_act = 0.02
-    #det_tresh = 0.1
-    #R_dump = 2.14
-    #time_step = 0.0001
-    #alpha = 0.03
-    #B = 6.24
-    #RRR = 50
-    #geometry = 'line'
-    #magnet_vol = 564 * (s_cu + s_nbti)
-    #curr_tol = 1
-    #max_ps_voltage = 10
 
     simple_quench_propagation(
         I_op=Iop, T_cs=Tcs, T_op=Top, copper_area=s_cu,

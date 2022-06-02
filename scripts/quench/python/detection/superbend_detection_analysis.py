@@ -32,7 +32,10 @@ dict_high_field_parameters = {
     'ratio_cu_sc' : 1.4,
 
     # Total conductor diameter [m]
-    'd_cond' : 0.8e-3
+    'd_cond' : 0.8e-3,
+
+    # Magnet inductance [H]
+    'L' : 4.32
 }
     
 def calc_detection_voltage(vq,rho,tqd,Io,Acu):

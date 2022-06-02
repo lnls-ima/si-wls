@@ -274,7 +274,7 @@ class NbTi:
 class SCWire:
     def __init__(self, parameters: dict):
     
-        [Iop, B, Top, Tc, Tcs, RRR, ratio_cu_sc, d_cond] = parameters.values()
+        [Iop, B, Top, Tc, Tcs, RRR, ratio_cu_sc, d_cond, L] = parameters.values()
         
         [s_sc, s_cu] = self.calc_area_sc_cu(d_cond, ratio_cu_sc)
         
@@ -282,7 +282,7 @@ class SCWire:
         self.Tjoule = _np.divide(_np.add(Tc, Tcs), 2)
 
         # Is superconducting?
-        is_sc = True
+        is_sc = False
 
         copper = Copper()
         nbti = NbTi()
@@ -425,22 +425,24 @@ if __name__ == "__main__":
     print('\n Enter operation parameters:')
     T = _np.float_(input('\n    Temperature [K]: '))
     RRR = int(input('\n    Copper RRR: '))
+    B = _np.float_(input('\n    Field on wire [T]: '))
 
     print('\n T = {} K'.format(T))
     print(' RRR = {}'.format(RRR))
+    print(' B = {}'.format(B))
 
-    [rho,c,k] = copper.calc_properties(T, RRR)
+    [dsty_cu,rho_cu,c_cu,k_cu] = copper.calc_properties(T, RRR, B)
+    [dsty_sc,rho_sc,c_sc,k_sc] = nbti.calc_properties(T, RRR, B, True)
 
     print('\n Copper Properties:')
-    print('\n    Resistivity: {} Ohm.m'.format(rho))
-    print('    Specific heat: {} J/Kg.K'.format(c))
-    print('    Thermal conductivity: {} W/m.K'.format(k))
-    
-    print('\n NbTi Properties:')
-    print('\n    Specific heat: {} J/kg.K\n'.format(
-                                        nbti.calc_specific_heat(T,0,True)))
-    print('    Thermal conductivity: {} W/m.K'.format(
-                                        nbti.calc_thermal_conductivity(T)))
+    print('\n    Resistivity: {} Ohm.m'.format(rho_cu))
+    print('    Specific heat: {} J/Kg.K'.format(c_cu))
+    print('    Thermal conductivity: {} W/m.K'.format(k_cu))
+
+    print('\n Nb-Ti Properties:')
+    print('\n    Resistivity: {} Ohm.m'.format(rho_sc))
+    print('    Specific heat: {} J/Kg.K'.format(c_sc))
+    print('    Thermal conductivity: {} W/m.K\n'.format(k_sc))
 
     ## Plot resistivity
     for rrr in copper._thermal_conductivity_per_rrr_data.keys():

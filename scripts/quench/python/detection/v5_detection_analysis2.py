@@ -16,7 +16,7 @@ dict_high_field_parameters = {
     'B' : 0,
 
     # Operating SC temperature [K]
-    'Top' : 4.2,
+    'Top' : 5,
 
     # Critical temperature [K]
     'Tc' : 9.2,
@@ -31,7 +31,10 @@ dict_high_field_parameters = {
     'ratio_cu_sc' : 0.9,
 
     # Total conductor diameter [m]
-    'd_cond' : 0.85e-3
+    'd_cond' : 0.85e-3,
+
+    # Magnet inductance [H]
+    'L' : 0.0997
 }
     
 if __name__ == "__main__":
