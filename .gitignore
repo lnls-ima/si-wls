@@ -1,0 +1,6 @@
+*.py[cod]
+*.asv
+*.bak
+model*/spice/**/*.log
+model*/spice/**/*.raw
+__pycache__/
