@@ -1,0 +1,2 @@
+Bp [T]		Bmax [T]	Margin [%]	HFIntBy [T.cm]
+-6,3229		5,2945		24,04		-19,78
