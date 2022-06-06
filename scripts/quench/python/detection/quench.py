@@ -324,6 +324,8 @@ def simple_quench_propagation(
        [1] M. Wilson, "Lecture 4: Quenching and Protection", JUAS, February 2016. """
     # init dump time to infinity until detection
     t_resp = _np.inf
+    # init power supply disable time to infinity until detection
+    t_resp_ps = _np.inf
     # wire properties
     wire = _materials.SCWire(
         {
@@ -831,7 +833,7 @@ if __name__ == "__main__":
     # alpha = 0.03
     # B = 5.12
     # RRR = 50
-    # geometry = 'ellipsoid'
+
     # geometry = 'line'
     # magnet_vol = 616 * (s_cu + s_nbti)
     # curr_tol = 1
@@ -848,8 +850,8 @@ if __name__ == "__main__":
     L = 0.1065
     L_cte = {0: L, 240: L}
     L_I = {0: 0.300, 24: 0.2583, 48: 0.1899, 72: 0.1558, 96: 0.13563, 120: 0.1256, 144: 0.1188, 168: 0.1142, 192: 0.1109, 216: 0.1084, 240: L}
-    t_valid = 0.1
-    t_act = 0.09
+    t_valid = 0.04
+    t_act = 0.06
     det_tresh = 0.1
     R_dump = 2.5
     time_step = 0.001
