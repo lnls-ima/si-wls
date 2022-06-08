@@ -128,28 +128,33 @@ class Copper:
         return [dsty, rho, c, k]
 
     def calc_magnetoresistivity(self, T, RRR, B):
+        
         rho_0 = self.calc_resistivity(T, RRR, 0)
-        S = _np.divide(
-                self.calc_resistivity(273, RRR, 0),
-                rho_0
-            )
-        log_x = _np.log10(
-            _np.multiply(B, S)
-        )
-        log_delta_rho = _np.add(
-            _np.add(
-                -2.662,
-                _np.add(
-                    _np.multiply(0.3168, log_x),
-                    _np.multiply(0.6229, _np.power(log_x, 2))
+        
+        if B < 0.01:
+            return rho_0
+        else:
+            S = _np.divide(
+                    self.calc_resistivity(273, RRR, 0),
+                    rho_0
                 )
-            ),
-            _np.add(
-                _np.multiply(-0.1839, _np.power(log_x, 3)),
-                _np.multiply(0.01827, _np.power(log_x, 4))
+            log_x = _np.log10(
+                _np.multiply(B, S)
             )
-        )
-        return _np.power(10, log_delta_rho) * rho_0 + rho_0
+            log_delta_rho = _np.add(
+                _np.add(
+                    -2.662,
+                    _np.add(
+                        _np.multiply(0.3168, log_x),
+                        _np.multiply(0.6229, _np.power(log_x, 2))
+                    )
+                ),
+                _np.add(
+                    _np.multiply(-0.1839, _np.power(log_x, 3)),
+                    _np.multiply(0.01827, _np.power(log_x, 4))
+                )
+            )
+            return _np.power(10, log_delta_rho) * rho_0 + rho_0
 
 class NbTi:
     """ Class to hold NbTi properties 
