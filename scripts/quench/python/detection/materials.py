@@ -156,6 +156,13 @@ class Copper:
             )
             return _np.power(10, log_delta_rho) * rho_0 + rho_0
 
+    def calc_RRR_0T_equivalent(self,RRR,B):   
+        # 270K used as a correction factor
+        res_293K = self.calc_resistivity(270,RRR,0)
+        res_op = self.calc_magnetoresistivity(4.2,RRR,B)
+        rrr = res_293K/res_op
+        return(rrr)
+        
 class NbTi:
     """ Class to hold NbTi properties 
     
