@@ -1,6 +1,7 @@
 *.py[cod]
 *.asv
 *.bak
-model*/spice/**/*.log
-model*/spice/**/*.raw
+model**/spice/**/*.log
+model**/spice/**/*.raw
+model**/spice/**/*.net
 __pycache__/
