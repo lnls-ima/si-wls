@@ -327,7 +327,7 @@ def simple_quench_propagation(
         inductanceI, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
         time_step=0.000001, RRR=100, B=0, alpha=0.03, tolerance=1e-6,
         geometry='ellipsoid', V_ps_max=10, t_ps=0, V_fw_diode=0,
-        use_magnetoresist=False, print_results=True
+        use_magnetoresist=False, print_results=True, write_files=False
         ):
     """
        Refs.: 
@@ -805,6 +805,10 @@ def simple_quench_propagation(
         _plt.grid(which='both', axis='both')
         ## show plots
         _plt.show()
+    if write_files:
+        _np.savetxt('R_vs_time.txt', _np.c_[time_axis, R], delimiter=', ')
+        _np.savetxt('I_vs_time.txt', _np.c_[time_axis, I], delimiter=', ')
+        _np.savetxt('Vq_vs_time.txt', _np.c_[time_axis, Vq], delimiter=', ')
     # DEBUG
     print('num iter = {0}'.format(iter_cnt))
     print('max temp = {0}'.format(zone_list[0].T))
