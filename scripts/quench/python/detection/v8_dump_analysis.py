@@ -1,11 +1,15 @@
 from tkinter import font
-from turtle import color
+from turtle import color, position
 import numpy as _np
 import dump as _dump
 import quench as _quench
 import detection as _detection
 import materials as _materials
 from matplotlib import pyplot as _plt
+
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator
+from mpl_toolkits.mplot3d import axes3d
 
 np_config_list = [
     2, 3, 4, 5, 6, 7, 8
@@ -21,6 +25,187 @@ failure_list = [
 
 # dummy equivalent resistance
 r_eq = 1 # ohm
+
+###########################################################
+# 3D plots
+
+# plot resistor count for each configuration
+fig, ax1 = _plt.subplots(subplot_kw={"projection": "3d"})
+x1 = []
+x2 = []
+y = []
+res_cnt = []
+for n_s in ns_config_list:
+    y.append([])
+    res_cnt.append([])
+    for n_p in np_config_list:
+        r_dump = _dump.ResistorBank(n_parallel=n_p, n_series=n_s, r_eq=r_eq)
+        r_eq_left_new = r_dump.get_equivalent_left_resistance()
+        r_eq_right_new = r_dump.get_equivalent_right_resistance()
+        r_eq_new = r_dump.get_equivalent_resistance()
+        y[-1].append(100 * r_eq_new / r_eq)
+        res_cnt[-1].append(n_p*n_s)
+# plot resistor count per config
+x1, x2 = _np.meshgrid(np_config_list, ns_config_list)
+surf1 = ax1.plot_surface(
+    x1,
+    x2,
+    _np.array(res_cnt),
+    cmap=cm.coolwarm,
+    linewidth=0,
+    antialiased=False
+    )
+ax1.set_title('Configurations resistor count' )
+ax1.set_xlabel('Parallel count')
+ax1.set_ylabel('Series count')
+ax1.set_zlabel('Resistor count')
+_plt.colorbar(surf1, shrink=0.5, aspect=5, pad=0.1)
+_plt.show()
+
+# plot open failures: Resistance change
+for failure in failure_list:
+    fig, ax1 = _plt.subplots(subplot_kw={"projection": "3d"})
+    x1 = []
+    x2 = []
+    y = []
+    res_cnt = []
+    for n_s in ns_config_list:
+        y.append([])
+        res_cnt.append([])
+        for n_p in np_config_list:
+            r_dump = _dump.ResistorBank(n_parallel=n_p, n_series=n_s, r_eq=r_eq)
+            r_dump.open_failure(failure['matrix'])
+            r_eq_left_new = r_dump.get_equivalent_left_resistance()
+            r_eq_right_new = r_dump.get_equivalent_right_resistance()
+            r_eq_new = r_dump.get_equivalent_resistance()
+            y[-1].append(100 * r_eq_new / r_eq)
+            res_cnt[-1].append(n_p*n_s)
+    # plot change in r_eq
+    x1, x2 = _np.meshgrid(np_config_list, ns_config_list)
+    surf1 = ax1.plot_surface(
+        x1,
+        x2,
+        _np.array(y),
+        cmap=cm.coolwarm,
+        linewidth=0,
+        antialiased=False
+        )
+    ax1.set_title('Resistance variation: Open '+failure['name'])
+    ax1.set_xlabel('Parallel count')
+    ax1.set_ylabel('Series count')
+    ax1.set_zlabel('R_eq [%]')
+    _plt.colorbar(surf1, shrink=0.5, aspect=5, pad=0.1)
+    _plt.show()
+
+# plot open failures: Voltage unbalance
+for failure in failure_list:
+    fig, ax1 = _plt.subplots(subplot_kw={"projection": "3d"})
+    x1 = []
+    x2 = []
+    v_divider = []
+    res_cnt = []
+    for n_s in ns_config_list:
+        v_divider.append([])
+        for n_p in np_config_list:
+            r_dump = _dump.ResistorBank(n_parallel=n_p, n_series=n_s, r_eq=r_eq)
+            r_dump.open_failure(failure['matrix'])
+            r_eq_left_new = r_dump.get_equivalent_left_resistance()
+            r_eq_right_new = r_dump.get_equivalent_right_resistance()
+            r_eq_new = r_dump.get_equivalent_resistance()
+            v_divider[-1].append(100 * _np.divide(r_eq_left_new, r_eq_new))
+    # plot change in v_percent
+    x1, x2 = _np.meshgrid(np_config_list, ns_config_list)
+    surf1 = ax1.plot_surface(
+        x1,
+        x2,
+        _np.array(v_divider),
+        cmap=cm.coolwarm,
+        linewidth=0,
+        antialiased=False
+        )
+    ax1.set_title('Voltage unbalance: Open '+failure['name'])
+    ax1.set_xlabel('Parallel count')
+    ax1.set_ylabel('Series count')
+    ax1.set_zlabel('Voltage divider [%]', color='tab:red')
+    _plt.colorbar(surf1, shrink=0.5, aspect=5, pad=0.1)
+    _plt.show()
+
+# plot short failures: Resistance change
+percent_shorted = 50
+for failure in failure_list:
+    fig, ax1 = _plt.subplots(subplot_kw={"projection": "3d"})
+    x1 = []
+    x2 = []
+    y = []
+    for n_s in ns_config_list:
+        y.append([])
+        for n_p in np_config_list:
+            r_dump = _dump.ResistorBank(n_parallel=n_p, n_series=n_s, r_eq=r_eq)
+            r_dump.short_failure(failure['matrix'], per=percent_shorted)
+            r_eq_left_new = r_dump.get_equivalent_left_resistance()
+            r_eq_right_new = r_dump.get_equivalent_right_resistance()
+            r_eq_new = r_dump.get_equivalent_resistance()
+            y[-1].append(100 * r_eq_new / r_eq)
+    # plot change in r_eq
+    x1, x2 = _np.meshgrid(np_config_list, ns_config_list)
+    surf1 = ax1.plot_surface(
+        x1,
+        x2,
+        _np.array(y),
+        cmap=cm.coolwarm,
+        linewidth=0,
+        antialiased=False
+        )
+    ax1.set_title(
+        "Resistance variation: Short of {}% of {}".format(
+            percent_shorted, failure['name']
+            )
+    )
+    ax1.set_xlabel('Parallel count')
+    ax1.set_ylabel('Series count')
+    ax1.set_zlabel('R_eq [%]')
+    _plt.colorbar(surf1, shrink=0.5, aspect=5, pad=0.1)
+    _plt.show()
+
+# plot short failures: Voltage unbalance
+percent_shorted = 50
+for failure in failure_list:
+    fig, ax1 = _plt.subplots(subplot_kw={"projection": "3d"})
+    x1 = []
+    x2 = []
+    v_divider = []
+    for n_s in ns_config_list:
+        v_divider.append([])
+        for n_p in np_config_list:
+            r_dump = _dump.ResistorBank(n_parallel=n_p, n_series=n_s, r_eq=r_eq)
+            r_dump.short_failure(failure['matrix'], per=percent_shorted)
+            r_eq_left_new = r_dump.get_equivalent_left_resistance()
+            r_eq_right_new = r_dump.get_equivalent_right_resistance()
+            r_eq_new = r_dump.get_equivalent_resistance()
+            v_divider[-1].append(100 * _np.divide(r_eq_left_new, r_eq_new))
+    # plot change in v_percent
+    x1, x2 = _np.meshgrid(np_config_list, ns_config_list)
+    surf1 = ax1.plot_surface(
+        x1,
+        x2,
+        _np.array(v_divider),
+        cmap=cm.coolwarm,
+        linewidth=0,
+        antialiased=False
+        )
+    ax1.set_title(
+            "Voltage unbalance: Short of {}% of {}".format(
+            percent_shorted, failure['name']
+            )
+        )
+    ax1.set_xlabel('Parallel count')
+    ax1.set_ylabel('Series count')
+    ax1.set_zlabel('Voltage divider [%]', color='tab:red')
+    _plt.colorbar(surf1, shrink=0.5, aspect=5, pad=0.1)
+    _plt.show()
+
+###########################################################
+# 2D plots
 
 # plot open failures (combined plot)
 for failure in failure_list:
