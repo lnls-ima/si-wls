@@ -12,6 +12,8 @@ class Copper:
         [3] https://www.copper.org/resources/properties/cryogenic/   
         [4] https://www.copper.org/resources/properties/atomic_properties.html
         [5]  Bradley, P., Radebaugh, R., "Properties of Selected Materials at Cryogenic Temperatures", NIST, 2013: https://www.nist.gov/publications/properties-selected-materials-cryogenic-temperatures
+        [6] Russenschuck, S., "Field Computation for Accelerator Magnets",
+            Appendix A, Wiley, 2010
         
     """
 
@@ -73,23 +75,27 @@ class Copper:
         }
 
     def calc_resistivity(self, T, RRR, B):
-    # Ref.: [1] [Ohm.m]
-        return _np.multiply(
-            1e-8,
-            _np.add(
-                _np.divide(1.545, _np.float_(RRR)),
-                _np.divide(
-                    1,
-                    _np.add(
+        if B == 0:
+            # Ref.: [1]
+            return _np.multiply(
+                1e-8,
+                _np.add(
+                    _np.divide(1.545, _np.float_(RRR)),
+                    _np.divide(
+                        1,
                         _np.add(
-                            _np.divide(2.32547*1e9, _np.power(_np.float_(T), 5)),
-                            _np.divide(9.57137*1e5, _np.power(_np.float_(T), 3))
-                            ),
-                        _np.divide(1.62735*1e2, _np.float_(T))
+                            _np.add(
+                                _np.divide(2.32547*1e9, _np.power(_np.float_(T), 5)),
+                                _np.divide(9.57137*1e5, _np.power(_np.float_(T), 3))
+                                ),
+                            _np.divide(1.62735*1e2, _np.float_(T))
+                            )
                         )
                     )
                 )
-            )
+        else:
+            # Ref.: [6]
+            return self.calc_magnetoresistivity(T,RRR,B)
 
     def calc_specific_heat(self, T):
         return _np.interp(
