@@ -12,6 +12,8 @@ class Copper:
         [3] https://www.copper.org/resources/properties/cryogenic/   
         [4] https://www.copper.org/resources/properties/atomic_properties.html
         [5]  Bradley, P., Radebaugh, R., "Properties of Selected Materials at Cryogenic Temperatures", NIST, 2013: https://www.nist.gov/publications/properties-selected-materials-cryogenic-temperatures
+        [6] Russenschuck, S., "Field Computation for Accelerator Magnets",
+            Appendix A, Wiley, 2010
         
     """
 
@@ -29,6 +31,7 @@ class Copper:
         }
 
         # Refs.: [3],[5]
+        # RRR 80 data is interpolated from [5]
         self._thermal_conductivity_per_rrr_data = {
             50: {
                 'T': 
@@ -36,6 +39,14 @@ class Copper:
 
                 'k':
                     _np.array([320.4, 466.8, 622.3, 778.1, 927.3, 1064.0, 1185.0, 1287.0, 1368.0, 1444.0, 1163.0, 863.6, 670.0, 561.1, 500.3, 465.1, 443.9, 421.8, 411.6, 406.0, 402.6, 400.1, 398.2, 396.5, 395.0, 393.6, 392.4])
+            },
+
+            80: {
+                'T': 
+                    _np.array([4, 6, 8, 10, 12, 14, 16, 18, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300]),
+
+                'k':
+                    _np.array([513.5, 745.7, 992.3, 1235.2, 1459.3, 1652.6, 1809.6, 1926.0, 2001.0, 1863.4, 1356.2, 948.4, 712.7, 586.6, 517.7, 478.2, 454.5, 429.6, 417.9, 411.4, 407.2, 404.2, 401.8, 399.7, 397.9, 396.2, 394.7])
             },
 
             100: {
@@ -64,23 +75,27 @@ class Copper:
         }
 
     def calc_resistivity(self, T, RRR, B):
-    # Ref.: [1] [Ohm.m]
-        return _np.multiply(
-            1e-8,
-            _np.add(
-                _np.divide(1.545, _np.float_(RRR)),
-                _np.divide(
-                    1,
-                    _np.add(
+        if B == 0:
+            # Ref.: [1]
+            return _np.multiply(
+                1e-8,
+                _np.add(
+                    _np.divide(1.545, _np.float_(RRR)),
+                    _np.divide(
+                        1,
                         _np.add(
-                            _np.divide(2.32547*1e9, _np.power(_np.float_(T), 5)),
-                            _np.divide(9.57137*1e5, _np.power(_np.float_(T), 3))
-                            ),
-                        _np.divide(1.62735*1e2, _np.float_(T))
+                            _np.add(
+                                _np.divide(2.32547*1e9, _np.power(_np.float_(T), 5)),
+                                _np.divide(9.57137*1e5, _np.power(_np.float_(T), 3))
+                                ),
+                            _np.divide(1.62735*1e2, _np.float_(T))
+                            )
                         )
                     )
                 )
-            )
+        else:
+            # Ref.: [6]
+            return self.calc_magnetoresistivity(T,RRR,B)
 
     def calc_specific_heat(self, T):
         return _np.interp(
@@ -128,29 +143,41 @@ class Copper:
         return [dsty, rho, c, k]
 
     def calc_magnetoresistivity(self, T, RRR, B):
+        
         rho_0 = self.calc_resistivity(T, RRR, 0)
-        S = _np.divide(
-                self.calc_resistivity(273, RRR, 0),
-                rho_0
-            )
-        log_x = _np.log10(
-            _np.multiply(B, S)
-        )
-        log_delta_rho = _np.add(
-            _np.add(
-                -2.662,
-                _np.add(
-                    _np.multiply(0.3168, log_x),
-                    _np.multiply(0.6229, _np.power(log_x, 2))
+        
+        if B < 0.01:
+            return rho_0
+        else:
+            S = _np.divide(
+                    self.calc_resistivity(273, RRR, 0),
+                    rho_0
                 )
-            ),
-            _np.add(
-                _np.multiply(-0.1839, _np.power(log_x, 3)),
-                _np.multiply(0.01827, _np.power(log_x, 4))
+            log_x = _np.log10(
+                _np.multiply(B, S)
             )
-        )
-        return _np.power(10, log_delta_rho) * rho_0 + rho_0
+            log_delta_rho = _np.add(
+                _np.add(
+                    -2.662,
+                    _np.add(
+                        _np.multiply(0.3168, log_x),
+                        _np.multiply(0.6229, _np.power(log_x, 2))
+                    )
+                ),
+                _np.add(
+                    _np.multiply(-0.1839, _np.power(log_x, 3)),
+                    _np.multiply(0.01827, _np.power(log_x, 4))
+                )
+            )
+            return _np.power(10, log_delta_rho) * rho_0 + rho_0
 
+    def calc_RRR_0T_equivalent(self,RRR,B):   
+        # 270K used as a correction factor
+        res_293K = self.calc_resistivity(270,RRR,0)
+        res_op = self.calc_magnetoresistivity(4.2,RRR,B)
+        rrr = res_293K/res_op
+        return(rrr)
+        
 class NbTi:
     """ Class to hold NbTi properties 
     

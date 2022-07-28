@@ -250,9 +250,15 @@ def composite_thermal_conductivity(copper_area, nbti_area, T2, T1, RRR):
         _np.multiply(f_cu, k_cu), _np.multiply(f_nbti, k_nbti)
         )
 
-def composite_resistivity(temp, copper_area, nbti_area, RRR, B, is_sc):
-    rho_cu = CU_PROPERTIES.calc_resistivity(temp, RRR, B)
-    rho_nbti = NBTI_PROPERTIES.calc_resistivity(temp, is_sc)    
+def composite_resistivity(
+    temp, copper_area, nbti_area, RRR, B, is_sc,
+    use_magnetoresist=False
+    ):
+    if use_magnetoresist:
+        rho_cu = CU_PROPERTIES.calc_magnetoresistivity(temp, RRR, B)
+    else:
+        rho_cu = CU_PROPERTIES.calc_resistivity(temp, RRR, B)
+    rho_nbti = NBTI_PROPERTIES.calc_resistivity(temp, is_sc)
     cond_area = _np.add(nbti_area, copper_area)
     f_cu = _np.divide(copper_area, cond_area)
     f_nbti = _np.divide(nbti_area, cond_area)
@@ -265,9 +271,12 @@ def composite_resistivity(temp, copper_area, nbti_area, RRR, B, is_sc):
         )
 
 def heating_factor(
-        J, temp, copper_area, nbti_area, RRR, B):
+        J, temp, copper_area, nbti_area, RRR, B, use_magnetoresist=False):
     # composite resistivity
-    rho_cu = CU_PROPERTIES.calc_resistivity(temp, RRR, B)
+    if use_magnetoresist:
+        rho_cu = CU_PROPERTIES.calc_magnetoresistivity(temp, RRR, B)
+    else:
+        rho_cu = CU_PROPERTIES.calc_resistivity(temp, RRR, B)
     rho_nbti = NBTI_PROPERTIES.calc_resistivity(temp, False)
     cond_area = _np.add(nbti_area, copper_area)
     f_cu = _np.divide(copper_area, cond_area)
@@ -317,13 +326,16 @@ def simple_quench_propagation(
         I_op, T_cs, T_op, copper_area, nbti_area, insulator_area,
         inductanceI, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
         time_step=0.000001, RRR=100, B=0, alpha=0.03, tolerance=1e-6,
-        geometry='ellipsoid', V_ps_max=10, t_ps=0, V_fw_diode=0
+        geometry='ellipsoid', V_ps_max=10, t_ps=0, V_fw_diode=0,
+        use_magnetoresist=False, print_results=True, write_files=False
         ):
     """
        Refs.: 
        [1] M. Wilson, "Lecture 4: Quenching and Protection", JUAS, February 2016. """
     # init dump time to infinity until detection
     t_resp = _np.inf
+    # init power supply disable time to infinity until detection
+    t_resp_ps = _np.inf
     # wire properties
     wire = _materials.SCWire(
         {
@@ -389,12 +401,18 @@ def simple_quench_propagation(
     Vnz.append(0)
     Eq.append(0)
     Eps.append(0)
-    Tmax.append(T_op)
-    Tavg.append(T_op)
+    Tmax.append(T_joule)
+    Tavg.append(T_joule)
     final_zone_long_radius.append(0)
     final_zone_transv_radius.append(0)
     # calculate initial composite resistivity
-    rho_0 = wire.resty_comp
+    if use_magnetoresist:
+        rho_0 = composite_resistivity(
+            T_joule, copper_area, nbti_area, RRR, B,
+            is_sc=False, use_magnetoresist=use_magnetoresist
+            )
+    else:
+        rho_0 = wire.resty_comp
     # create initial zone
     zone_list.append(
         QuenchZone(
@@ -424,11 +442,13 @@ def simple_quench_propagation(
     J = J0
     # increase zone 1 temperature
     zone_list[0].T += time_step * heating_factor(
-        J, zone_list[0].T, copper_area, nbti_area, RRR, B
+        J, zone_list[0].T, copper_area, nbti_area, RRR, B,
+        use_magnetoresist=use_magnetoresist
         )
     # update zone 1 resistivity
     zone_list[0].rho = composite_resistivity(
-        zone_list[0].T, copper_area, nbti_area, RRR, B, is_sc=False
+        zone_list[0].T, copper_area, nbti_area, RRR, B, is_sc=False,
+        use_magnetoresist=use_magnetoresist
         )
     # update resistance
     zone_list[0].R = zone_list[0].rho * geometric_factor(
@@ -564,11 +584,13 @@ def simple_quench_propagation(
         for zone in zone_list:
             # increase temperature
             zone.T += time_step * heating_factor(
-                J, zone.T, copper_area, nbti_area, RRR, B
+                J, zone.T, copper_area, nbti_area, RRR, B,
+                use_magnetoresist=use_magnetoresist
                 )
             # update resistivity
             zone.rho = composite_resistivity(
-                zone.T, copper_area, nbti_area, RRR, B, is_sc=False
+                zone.T, copper_area, nbti_area, RRR, B, is_sc=False,
+                use_magnetoresist=use_magnetoresist
                 )
             # update resistance
             zone.R = zone.rho * geometric_factor(
@@ -672,115 +694,121 @@ def simple_quench_propagation(
         final_zone_transv_radius.append(zone_list[-1].transv_radius)
         final_zone_long_radius.append(zone_list[-1].long_radius)
         iter_cnt += 1
-    # print results
+    # prepare time axis
     t_total = (len(R)-1) * time_step
     time_axis = _np.linspace(0, t_total, len(R))
-    # R quench plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, R, '-x')
-    _plt.title('Quench resistance growth')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('R [ohm]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # I plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, I, '-x')
-    _plt.title('Current decay')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('I [A]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Vq plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Vq, '-x')
-    _plt.title('Quench voltage')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Voltage [V]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Ve plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Ve, '-x')
-    _plt.title('Dump voltage')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Voltage [V]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Vc plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Vc, '-x')
-    _plt.title('Voltage at coil terminals')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Voltage [V]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Vl plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Vl, '-x')
-    _plt.title('Inductive coil voltage')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Voltage [V]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Vnz plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Vnz, '-x')
-    _plt.title('Voltage across normal zone')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Voltage [V]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Eq plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Eq, '-x')
-    _plt.title('Quench energy')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Energy [J]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Eps plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Eps, '-x')
-    _plt.title('Power supply energy')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Energy [J]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Tmax plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Tmax, '-x')
-    _plt.title('Hot-spot temperature')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Temperature [K]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # Tavg plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, Tavg, '-x')
-    _plt.title('Average quench zone temperature')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Temperature [K]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # zone long radius plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, final_zone_long_radius, '-x')
-    _plt.title('Longitudinal zone growth')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Longitudinal radius [m]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # zone transv radius plot
-    _plt.figure(figsize=[9.6, 7.2])
-    _plt.plot(time_axis, final_zone_transv_radius, '-x')
-    _plt.title('Transverse zone growth')
-    _plt.xlabel('Time [sec]', fontsize=14)
-    _plt.ylabel('Transverse radius [m]', fontsize=14)
-    _plt.minorticks_on()
-    _plt.grid(which='both', axis='both')
-    # show plots
-    _plt.show()
+    # print results
+    if print_results:
+        ## R quench plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, R, '-x')
+        _plt.title('Quench resistance growth')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('R [ohm]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## I plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, I, '-x')
+        _plt.title('Current decay')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('I [A]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Vq plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Vq, '-x')
+        _plt.title('Quench voltage')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Voltage [V]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Ve plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Ve, '-x')
+        _plt.title('Dump voltage')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Voltage [V]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Vc plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Vc, '-x')
+        _plt.title('Voltage at coil terminals')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Voltage [V]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Vl plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Vl, '-x')
+        _plt.title('Inductive coil voltage')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Voltage [V]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Vnz plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Vnz, '-x')
+        _plt.title('Voltage across normal zone')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Voltage [V]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Eq plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Eq, '-x')
+        _plt.title('Quench energy')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Energy [J]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Eps plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Eps, '-x')
+        _plt.title('Power supply energy')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Energy [J]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Tmax plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Tmax, '-x')
+        _plt.title('Hot-spot temperature')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Temperature [K]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## Tavg plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, Tavg, '-x')
+        _plt.title('Average quench zone temperature')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Temperature [K]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## zone long radius plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, final_zone_long_radius, '-x')
+        _plt.title('Longitudinal zone growth')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Longitudinal radius [m]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## zone transv radius plot
+        _plt.figure(figsize=[9.6, 7.2])
+        _plt.plot(time_axis, final_zone_transv_radius, '-x')
+        _plt.title('Transverse zone growth')
+        _plt.xlabel('Time [sec]', fontsize=14)
+        _plt.ylabel('Transverse radius [m]', fontsize=14)
+        _plt.minorticks_on()
+        _plt.grid(which='both', axis='both')
+        ## show plots
+        _plt.show()
+    if write_files:
+        _np.savetxt('R_vs_time.txt', _np.c_[time_axis, R], delimiter=', ')
+        _np.savetxt('I_vs_time.txt', _np.c_[time_axis, I], delimiter=', ')
+        _np.savetxt('Vq_vs_time.txt', _np.c_[time_axis, Vq], delimiter=', ')
     # DEBUG
     print('num iter = {0}'.format(iter_cnt))
     print('max temp = {0}'.format(zone_list[0].T))
@@ -831,35 +859,35 @@ if __name__ == "__main__":
     # alpha = 0.03
     # B = 5.12
     # RRR = 50
-    # geometry = 'ellipsoid'
+
     # geometry = 'line'
     # magnet_vol = 616 * (s_cu + s_nbti)
     # curr_tol = 1
     # max_ps_voltage = 10
 
     # SWLS - Model V6.0
-    Iop = 240
-    Tcs = 6.08
-    Top = 4.2
-    s_cu = 2.682e-7
-    s_nbti = 2.98e-7
-    #s_insulator = 6.308e-8
-    s_insulator = 0
-    L = 0.1065
-    L_cte = {0: L, 240: L}
-    L_I = {0: 0.300, 24: 0.2583, 48: 0.1899, 72: 0.1558, 96: 0.13563, 120: 0.1256, 144: 0.1188, 168: 0.1142, 192: 0.1109, 216: 0.1084, 240: L}
-    t_valid = 0.1
-    t_act = 0.09
-    det_tresh = 0.1
-    R_dump = 2.5
-    time_step = 0.001
-    alpha = 0.03
-    B = 5.33
-    RRR = 50
-    geometry = 'line'
-    magnet_vol = 564 * (s_cu + s_nbti)
-    curr_tol = 1
-    max_ps_voltage = 10
+    #Iop = 240
+    #Tcs = 6.08
+    #Top = 4.2
+    #s_cu = 2.682e-7
+    #s_nbti = 2.98e-7
+    ##s_insulator = 6.308e-8
+    #s_insulator = 0
+    #L = 0.1065
+    #L_cte = {0: L, 240: L}
+    #L_I = {0: 0.300, 24: 0.2583, 48: 0.1899, 72: 0.1558, 96: 0.13563, 120: 0.1256, 144: 0.1188, 168: 0.1142, 192: 0.1109, 216: 0.1084, 240: L}
+    #t_valid = 0.04
+    #t_act = 0.06
+    #det_tresh = 0.1
+    #R_dump = 2.5
+    #time_step = 0.001
+    #alpha = 0.03
+    #B = 5.33
+    #RRR = 50
+    #geometry = 'line'
+    #magnet_vol = 564 * (s_cu + s_nbti)
+    #curr_tol = 1
+    #max_ps_voltage = 10
 
     # SWLS - Model V7.0
     # Iop = 280
@@ -885,6 +913,60 @@ if __name__ == "__main__":
     # curr_tol = 1
     # max_ps_voltage = 10
 
+    # SWLS - Model V8.0
+    Iop = 228
+    Tcs = 6.1
+    Top = 5.0
+    s_cu = 2.682e-7
+    s_nbti = 2.98e-7
+    #s_insulator = 6.308e-8
+    s_insulator = 0
+    L = 0.122
+    L_cte = {0: L, 228: L}
+    t_valid = 0.04
+    t_act = 0.06
+    det_tresh = 0.1
+    R_dump = 2.5
+    time_step = 0.001
+    alpha = 0.03
+    B = 5.30
+    RRR = 200
+    use_magnetoresist=True
+    geometry = 'line'
+    magnet_vol = 564 * (s_cu + s_nbti)
+    curr_tol = 1
+    max_ps_voltage = 10
+    ps_delay = 0.07 # seg
+    V_fw_diode = 10 # freewheeling diode fwd voltage
+
+    L_I = {
+        0.0 : 0.37428008998875145,
+        1.0 : 0.37090854893138364,
+        5.0 : 0.35742238470191234,
+        10.0 : 0.3405646794150732,
+        20.790378006872857: 0.3041844769403825,
+        23.024054982817873: 296.65354330708664e-3,
+        29.037800687285227: 276.37795275590554e-3,
+        34.36426116838491: 257.8740157480314e-3,
+        40.54982817869417: 236.2204724409449e-3,
+        46.048109965635746: 217.5196850393701e-3,
+        50.51546391752578: 209.25196850393704e-3,
+        63.23024054982818: 186.02362204724412e-3,
+        68.72852233676977: 176.18110236220477e-3,
+        73.8831615120275: 171.0629921259843e-3,
+        82.47422680412372: 162.59842519685043e-3,
+        91.23711340206187: 154.13385826771656e-3,
+        104.1237113402062: 147.83464566929138e-3,
+        114.26116838487971: 142.7165354330709e-3,
+        125.08591065292097: 139.3700787401575e-3,
+        140.89347079037802: 134.6456692913386e-3,
+        155.32646048109967: 131.2992125984252e-3,
+        170.10309278350516: 128.74015748031502e-3,
+        189.00343642611685: 125.98425196850397e-3,
+        209.27835051546393: 123.62204724409457e-3,
+        227.66323024054984: 122.04724409448824e-3,
+    }
+
     simple_quench_propagation(
         I_op=Iop, T_cs=Tcs, T_op=Top, copper_area=s_cu,
         nbti_area=s_nbti, insulator_area=s_insulator,
@@ -892,5 +974,6 @@ if __name__ == "__main__":
         t_act=t_act, det_tresh=det_tresh, R_dump=R_dump,
         time_step=time_step, RRR=RRR, B=B, alpha=alpha,
         tolerance=curr_tol, geometry=geometry,
-        V_ps_max = max_ps_voltage
+        V_ps_max = max_ps_voltage, t_ps=ps_delay,
+        V_fw_diode=V_fw_diode, use_magnetoresist=use_magnetoresist
         )

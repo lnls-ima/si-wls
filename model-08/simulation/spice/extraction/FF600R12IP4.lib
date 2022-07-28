@@ -1,0 +1,9 @@
+.subckt FF600R12IP4 C G E
+M1 1 G E Migbt
+Q1 E 1 C Qigbt
+D1 E C Digbt
+.model Migbt VDMOS(Vto=6.1 Kp=1.2 mtriode=1.55 Rd=0 Rs=10m Rg=10m
++ Cgs=34.95n Cgdmax=200n Cgdmin=2.05n Is=0 oneway tt=1p)
+.model Qigbt PNP(Is=1n Bf=67.01 Nf=1.4)
+.model Digbt D(Is=5m Rs=889.0239u N=4.0614 TT=115n Vp=0.95)
+.ends FF600R12IP4
