@@ -1,0 +1,23 @@
+Error		difB [T]
+59turns/layer	0,005051
+gap-0.2mm	0,049084
+gap+0.2mm	0,045690
+gapside-0.2mm	0,001860
+gapside+0.2mm	0,000956
+w0-0.2mm	0,002160
+w0+0.2mm	0,001026
+h0-0.2mm	0,018708
+h0+0.2mm	0,014892
+dcp-0.2mm	0,001513
+dcp+0.2mm	0,000125
+dcc-0.2mm	0,003073
+dcc+0.2mm	0,000116
+r0-0.2mm	0,029425
+r0+0.2mm	0,029057
+transvshift	0,003363
+longshift	0,006975
+rotation_x	0,001389
+rotation_y	0,001848
+rotation_z	0,000173
+standard	0,017931
+

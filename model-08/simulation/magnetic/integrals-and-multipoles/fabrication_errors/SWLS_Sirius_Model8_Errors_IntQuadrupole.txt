@@ -1,0 +1,23 @@
+Error	Int Quadrupole [T]
+Model 8	-0,246165
+59turns/layer	-0,243546
+gap-0.2mm	-0,257867
+gap+0.2mm	-0,243546
+gapside-0.2mm	-0,259741
+gapside+0.2mm	-0,248658
+w0-0.2mm	-0,252875
+w0+0.2mm	-0,248752
+h0-0.2mm	-0,291810
+h0+0.2mm	-0,247904
+dcp-0.2mm	-0,252615
+dcp+0.2mm	-0,265870
+dcc-0.2mm	-0,251668
+dcc+0.2mm	-0,242289
+r0-0.2mm	-0,255269
+r0+0.2mm	-0,249356
+transvshift	-0,284835
+longshift	-0,425185
+rotation_x	-0,242361
+rotation_y	-0,244400
+rotation_z	-0,326946
+standard	-0,294925

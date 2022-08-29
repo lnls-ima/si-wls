@@ -1,0 +1,23 @@
+Error		IB [T.m]
+Model 8	0,000133
+59turns/layer	0,002094
+gap-0.2mm	0,000465
+gap+0.2mm	0,000228
+gapside-0.2mm	0,000357
+gapside+0.2mm	0,000574
+w0-0.2mm	0,000543
+w0+0.2mm	0,000816
+h0-0.2mm	0,000188
+h0+0.2mm	0,000103
+dcp-0.2mm	0,000666
+dcp+0.2mm	0,000849
+dcc-0.2mm	0,000158
+dcc+0.2mm	0,000173
+r0-0.2mm	0,002089
+r0+0.2mm	0,002314
+transvshift	0,000082
+longshift	0,000199
+rotation_x	0,000048
+rotation_y	0,000187
+rotation_z	0,000113
+standard	0,001918

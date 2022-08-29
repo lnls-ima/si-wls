@@ -1,0 +1,24 @@
+Error	Int Sextupole [T/m]
+Model 8	-32,154
+59turns/layer	-35,780
+gap-0.2mm	-27,621
+gap+0.2mm	-35,780
+gapside-0.2mm	-25,289
+gapside+0.2mm	-33,488
+w0-0.2mm	-28,423
+w0+0.2mm	-31,989
+h0-0.2mm	-23,107
+h0+0.2mm	-33,897
+dcp-0.2mm	-27,532
+dcp+0.2mm	-24,653
+dcc-0.2mm	-32,427
+dcc+0.2mm	-33,485
+r0-0.2mm	-6,624
+r0+0.2mm	-38,300
+transvshift	-14,704
+longshift	30,651
+rotation_x	-54,055
+rotation_y	-29,802
+rotation_z	-12,928
+standard	0,044
+
