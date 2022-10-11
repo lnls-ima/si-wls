@@ -42,5 +42,14 @@ def calc_prop_velocity(Jo, C, rho, k, Tjoule, Top, method):
             prop_vel = 5
         return prop_vel
     except Exception:
-        _traceback.print_exc(file=_sys.stdout)    
-    
+        _traceback.print_exc(file=_sys.stdout)
+
+def calc_detection_time(vq,rho,vdet,Io,Acu):
+    """ Inverse of detection voltage calculation
+    """
+    try:
+        return _np.multiply(
+            _np.divide(vdet, Io), _np.divide(_np.divide(Acu, rho), vq)
+            )
+    except Exception:
+        _traceback.print_exc(file=_sys.stdout)
