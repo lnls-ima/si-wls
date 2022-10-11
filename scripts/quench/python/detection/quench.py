@@ -79,31 +79,47 @@ MIITS_table = {
 def calc_resistor(I_op, v_max):
     return v_max / I_op
 
-def calc_hot_spot(copper_area, nbti_area, I_op, tau, t_switch, RRR):
+#def calc_hot_spot(copper_area, nbti_area, I_op, tau, t_switch, RRR):
+#    # MIITS from circuit analysis
+#    copper_area_cm2 = copper_area * 1e4
+#    nbti_area_cm2 = nbti_area * 1e4
+#    ratio = copper_area_cm2 / nbti_area_cm2
+#    miits = _np.power(I_op, 2) * (t_switch + tau/2) * 1e-6
+#    gamma = miits / _np.power(copper_area_cm2, 2)
+#    # MIITS from composite wire
+#    miits_temp_cu = MIITS_table['Cu'][RRR]['T']
+#    miits_val_cu = MIITS_table['Cu'][RRR]['MIITS']
+#    if (nbti_area_cm2 != 0):
+#        miits_temp_nbti = MIITS_table['Nb-Ti'][RRR]['T']
+#        miits_val_nbti = MIITS_table['Nb-Ti'][RRR]['MIITS']
+#        composite_gamma = [
+#            _np.interp(T, miits_temp_cu, miits_val_cu)
+#                + _np.divide(
+#                    _np.interp(T, miits_temp_nbti, miits_val_nbti),
+#                     ratio
+#                    )
+#            for T in miits_temp_cu
+#            ]
+#    else:
+#        composite_gamma = miits_val_cu
+#    # return hot-spot temperature
+#    return _np.interp(gamma, composite_gamma, miits_temp_cu)
+
+def calc_hot_spot(copper_area, nbti_area, I_op, tau, t_switch, RRR, B=0, Tstep=0.1, Tmax=300):
     # MIITS from circuit analysis
     copper_area_cm2 = copper_area * 1e4
     nbti_area_cm2 = nbti_area * 1e4
     ratio = copper_area_cm2 / nbti_area_cm2
     miits = _np.power(I_op, 2) * (t_switch + tau/2) * 1e-6
     gamma = miits / _np.power(copper_area_cm2, 2)
-    # MIITS from composite wire
-    miits_temp_cu = MIITS_table['Cu'][RRR]['T']
-    miits_val_cu = MIITS_table['Cu'][RRR]['MIITS']
-    if (nbti_area_cm2 != 0):
-        miits_temp_nbti = MIITS_table['Nb-Ti'][RRR]['T']
-        miits_val_nbti = MIITS_table['Nb-Ti'][RRR]['MIITS']
-        composite_gamma = [
-            _np.interp(T, miits_temp_cu, miits_val_cu)
-                + _np.divide(
-                    _np.interp(T, miits_temp_nbti, miits_val_nbti),
-                     ratio
-                    )
-            for T in miits_temp_cu
-            ]
-    else:
-        composite_gamma = miits_val_cu
-    # return hot-spot temperature
-    return _np.interp(gamma, composite_gamma, miits_temp_cu)
+    # Find MIITS over temperature range until it reaches value found from circuit analysis
+    T = _np.arange(4,Tmax+Tstep,Tstep)
+    for t in T:
+        gamma_cu = CU_PROPERTIES.calc_miits_cu(t, RRR, B)
+        gamma_nbti = NBTI_PROPERTIES.calc_miits_nbti(t, RRR, B)
+        composite_gamma = gamma_cu + gamma_nbti/ratio
+        if composite_gamma > gamma:
+            return t
 
 def calc_dissipation(t_det, Iop, L, rho, R_dump, s_cond, v_prop):
 
@@ -331,7 +347,7 @@ def simple_quench_propagation(
         write_files=False
         ):
     """
-       Refs.: 
+       Refs.:
        [1] M. Wilson, "Lecture 4: Quenching and Protection", JUAS, February 2016. """
     # configure simulation time step
     time_step = time_step_1
@@ -550,6 +566,9 @@ def simple_quench_propagation(
     iter_cnt += 1
     # ITERATION LOOP
     while (I_op > tolerance):
+        # update time step if necessary
+        if switch_time_step >= 0 and time_axis[-1] >= switch_time_step:
+            time_step = time_step_2
         # DEBUG
         print('num iter = {0}'.format(iter_cnt))
         print('max temp = {0}'.format(zone_list[0].T))
@@ -616,13 +635,13 @@ def simple_quench_propagation(
         E_quench += I_op * V_quench * time_step
         # update dump time if detection happened
         if t_resp == _np.inf and V_quench >= det_tresh:
-            t_resp = iter_cnt*time_step + t_valid + t_act
-            t_resp_ps = iter_cnt*time_step + t_valid + t_ps
+            t_resp = time_axis[-1] + t_valid + t_act
+            t_resp_ps = time_axis[-1] + t_valid + t_ps
         # update current and add dump resistance
-        if (iter_cnt*time_step >= t_resp):
+        if (time_axis[-1] >= t_resp):
             R_total = R_quench + R_dump
             V_dump = R_dump * I_op
-            if (iter_cnt*time_step < t_resp_ps):
+            if (time_axis[-1] < t_resp_ps):
                 # clip power supply voltage if necessary
                 V_ps = R_total * I_op
                 if V_ps > V_ps_max:
@@ -649,7 +668,7 @@ def simple_quench_propagation(
         else:
             R_total = R_quench
             V_dump = 0
-            if (iter_cnt*time_step < t_resp_ps):
+            if (time_axis[-1] < t_resp_ps):
                 # clip power supply voltage if necessary
                 V_ps = R_total * I_op
                 if V_ps > V_ps_max:
@@ -702,10 +721,8 @@ def simple_quench_propagation(
         Tavg.append(T_weighted_avg)
         final_zone_transv_radius.append(zone_list[-1].transv_radius)
         final_zone_long_radius.append(zone_list[-1].long_radius)
+        time_axis.append(time_axis[-1] + time_step)
         iter_cnt += 1
-    # prepare time axis
-    t_total = (len(R)-1) * time_step
-    time_axis = _np.linspace(0, t_total, len(R))
     # print results
     if print_results:
         ## R quench plot
@@ -928,25 +945,25 @@ if __name__ == "__main__":
     Top = 5.0
     s_cu = 2.79e-7
     s_nbti = 2.88e-7
-    #s_insulator = 6.308e-8
     s_insulator = 0
-    L = 0.122
-    L_cte = {0: L, 228: L}
     t_valid = 0.057
     t_act = 0
     det_tresh = 0
     R_dump = 2
-    time_step = 0.001
+    time_step_1 = 0.00001
+    time_step_2 = 0.001
+    t_switch_time_step = 0.005
     alpha = 0.03
     B = 5.30
-    RRR = 80
+    RRR = 131
     use_magnetoresist=True
     geometry = 'line'
     magnet_vol = 564 * (s_cu + s_nbti)
     curr_tol = 1
     max_ps_voltage = 10
     ps_delay = 0.07 # seg
-    V_fw_diode = 0.8 # freewheeling diode fwd voltage
+    #V_fw_diode = 0.8 # freewheeling diode fwd voltage
+    V_fw_diode = 0.0 # freewheeling diode fwd voltage
 
     L_I = {
         0.0 : 0.37428008998875145,
@@ -1005,7 +1022,8 @@ if __name__ == "__main__":
         nbti_area=s_nbti, insulator_area=s_insulator,
         inductanceI=L_I, magnet_vol=magnet_vol, t_valid=t_valid,
         t_act=t_act, det_tresh=det_tresh, R_dump=R_dump,
-        time_step=time_step, RRR=RRR, B=B, alpha=alpha,
+        time_step_1=time_step_1, time_step_2=time_step_2,
+        switch_time_step=t_switch_time_step, RRR=RRR, B=B, alpha=alpha,
         tolerance=curr_tol, geometry=geometry,
         V_ps_max = max_ps_voltage, t_ps=ps_delay,
         V_fw_diode=V_fw_diode, use_magnetoresist=use_magnetoresist,
@@ -1015,7 +1033,7 @@ if __name__ == "__main__":
     fig, ax1 = _plt.subplots()
     ax2 = ax1.twinx()
     # plot dump voltage and current
-    ax1.plot(time_axis, Ve, 'k-')
+    ax1.plot(time_axis, Tmax, 'k-')
     ax2.plot(time_axis, I, 'r-')
     ax1.set_xlabel('Time [s]')
     ax1.set_ylabel('Dump voltage [V]', color='k')

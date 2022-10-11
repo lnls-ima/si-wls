@@ -177,6 +177,23 @@ class Copper:
         res_op = self.calc_magnetoresistivity(4.2,RRR,B)
         rrr = res_293K/res_op
         return(rrr)
+
+    def calc_density_cu(self, T):
+        thermal_contraction = _np.interp(T,[20, 80, 200, 300],[0.00323, 0.00302, 0.00149, 0])
+        d_300K = 8960
+        dd = d_300K*(1-_np.power(1+thermal_contraction,3))
+        return d_300K - dd
+
+    def calc_miits_cu(self, Tmax, RRR, B, Tstep=0.1):
+        f_cu = []
+        T = _np.arange(4,Tmax+Tstep,Tstep)
+        # OBS: 1e14 factor to convert m^4 to cm^4 (1e8) and IIT
+        #      to MIITS (Mega = 1e6)
+        # Temperature dependant density
+        f_cu = [self.calc_density_cu(t)*self.calc_specific_heat(t) / 
+                (1e14*self.calc_resistivity(t,RRR,B)) for t in T]
+        gamma_cu = _np.trapz(f_cu,T)
+        return gamma_cu
         
 class NbTi:
     """ Class to hold NbTi properties 
@@ -297,6 +314,35 @@ class NbTi:
         k = self.calc_avg_thermal_conductivity(T1, T2)       # [W/m.K]
 
         return [dsty, rho, c, k]
+
+    def calc_density_nbti(self, T):
+        thermal_contraction = _np.interp(T,
+            [
+                20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200,
+                220, 240, 260, 280, 300
+            ],
+            [
+                1.88E-03, 1.87E-03, 1.85E-03, 1.82E-03, 1.77E-03, 1.73E-03,
+                1.67E-03, 1.61E-03, 1.54E-03, 1.47E-03, 1.40E-03, 1.32E-03,
+                1.25E-03, 1.17E-03, 1.09E-03, 1.01E-03, 9.35E-04, 8.56E-04, 0
+                ]
+                )
+        #thermal_contraction = np.interp(T,[4.2, 77, 300],[0.0035, 0.00325, 0])
+        d_300K = 6000
+        dd = d_300K*(1-_np.power(1+thermal_contraction,3))
+        return d_300K - dd
+
+    def calc_miits_nbti(self, Tmax, RRR, B, Tstep=0.1):
+        copper = Copper()
+        f_nbti = []
+        T = _np.arange(4,Tmax+Tstep,Tstep)
+        # OBS: 1e14 factor to convert m^4 to cm^4 (1e8) and IITS
+        #      to MIITS (Mega = 1e6)
+        # Temperature dependant density
+        f_nbti = [self.calc_density_nbti(t)*self.calc_specific_heat(t,B,True) / 
+                    (1e14*copper.calc_resistivity(t,RRR,B)) for t in T]
+        gamma_nbti = _np.trapz(f_nbti,T)
+        return gamma_nbti
 
 class SCWire:
     def __init__(self, parameters: dict):
