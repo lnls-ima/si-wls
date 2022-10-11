@@ -325,13 +325,18 @@ def ellipsoid_vol(a, b):
 def simple_quench_propagation(
         I_op, T_cs, T_op, copper_area, nbti_area, insulator_area,
         inductanceI, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
-        time_step=0.000001, RRR=100, B=0, alpha=0.03, tolerance=1e-6,
-        geometry='ellipsoid', V_ps_max=10, t_ps=0, V_fw_diode=0,
-        use_magnetoresist=False, print_results=True, write_files=False
+        time_step_1=0.000001, time_step_2=0.000001, switch_time_step=-1, RRR=100,
+        B=0, alpha=0.03, tolerance=1e-6, geometry='ellipsoid', V_ps_max=10,
+        t_ps=0, V_fw_diode=0, use_magnetoresist=False, print_results=True,
+        write_files=False
         ):
     """
        Refs.: 
        [1] M. Wilson, "Lecture 4: Quenching and Protection", JUAS, February 2016. """
+    # configure simulation time step
+    time_step = time_step_1
+    if switch_time_step == 0:
+        time_step = time_step_2
     # init dump time to infinity until detection
     t_resp = _np.inf
     # init power supply disable time to infinity until detection
@@ -388,6 +393,8 @@ def simple_quench_propagation(
     final_zone_transv_radius = []
     # transverse normal zone size
     final_zone_long_radius = []
+    # time axis array
+    time_axis = []
     # initial condition
     propagation_end = False
     E_quench = 0
@@ -405,6 +412,7 @@ def simple_quench_propagation(
     Tavg.append(T_joule)
     final_zone_long_radius.append(0)
     final_zone_transv_radius.append(0)
+    time_axis.append(0)
     # calculate initial composite resistivity
     if use_magnetoresist:
         rho_0 = composite_resistivity(
@@ -461,13 +469,13 @@ def simple_quench_propagation(
     E_quench += I_op * V_quench * time_step
     # update dump time if detection happened
     if V_quench >= det_tresh:
-        t_resp = iter_cnt*time_step + t_valid + t_act
-        t_resp_ps = iter_cnt*time_step + t_valid + t_ps
+        t_resp = t_valid + t_act
+        t_resp_ps = t_valid + t_ps
     # update current and add dump resistance
-    if (iter_cnt*time_step >= t_resp):
+    if (time_axis[-1] >= t_resp):
         R_total = R_quench + R_dump
         V_dump = R_dump * I_op
-        if (iter_cnt*time_step < t_resp_ps):
+        if (time_axis[-1] < t_resp_ps):
             # clip power supply voltage if necessary
             V_ps = R_total * I_op
             if V_ps > V_ps_max:
@@ -494,7 +502,7 @@ def simple_quench_propagation(
     else:
         R_total = R_quench
         V_dump = 0
-        if (iter_cnt*time_step < t_resp_ps):
+        if (time_axis[-1] < t_resp_ps):
             # clip power supply voltage if necessary
             V_ps = R_total * I_op
             if V_ps > V_ps_max:
@@ -538,6 +546,7 @@ def simple_quench_propagation(
     Tavg.append(zone_list[0].T)
     final_zone_transv_radius.append(zone_list[0].transv_radius)
     final_zone_long_radius.append(zone_list[0].long_radius)
+    time_axis.append(time_axis[-1] + time_step)
     iter_cnt += 1
     # ITERATION LOOP
     while (I_op > tolerance):
@@ -917,27 +926,27 @@ if __name__ == "__main__":
     Iop = 228
     Tcs = 6.1
     Top = 5.0
-    s_cu = 2.682e-7
-    s_nbti = 2.98e-7
+    s_cu = 2.79e-7
+    s_nbti = 2.88e-7
     #s_insulator = 6.308e-8
     s_insulator = 0
     L = 0.122
     L_cte = {0: L, 228: L}
-    t_valid = 0.04
-    t_act = 0.06
-    det_tresh = 0.1
-    R_dump = 2.5
+    t_valid = 0.057
+    t_act = 0
+    det_tresh = 0
+    R_dump = 2
     time_step = 0.001
     alpha = 0.03
     B = 5.30
-    RRR = 200
+    RRR = 80
     use_magnetoresist=True
     geometry = 'line'
     magnet_vol = 564 * (s_cu + s_nbti)
     curr_tol = 1
     max_ps_voltage = 10
     ps_delay = 0.07 # seg
-    V_fw_diode = 10 # freewheeling diode fwd voltage
+    V_fw_diode = 0.8 # freewheeling diode fwd voltage
 
     L_I = {
         0.0 : 0.37428008998875145,
@@ -945,29 +954,53 @@ if __name__ == "__main__":
         5.0 : 0.35742238470191234,
         10.0 : 0.3405646794150732,
         20.790378006872857: 0.3041844769403825,
-        23.024054982817873: 296.65354330708664e-3,
-        29.037800687285227: 276.37795275590554e-3,
-        34.36426116838491: 257.8740157480314e-3,
-        40.54982817869417: 236.2204724409449e-3,
-        46.048109965635746: 217.5196850393701e-3,
-        50.51546391752578: 209.25196850393704e-3,
-        63.23024054982818: 186.02362204724412e-3,
-        68.72852233676977: 176.18110236220477e-3,
-        73.8831615120275: 171.0629921259843e-3,
-        82.47422680412372: 162.59842519685043e-3,
-        91.23711340206187: 154.13385826771656e-3,
-        104.1237113402062: 147.83464566929138e-3,
-        114.26116838487971: 142.7165354330709e-3,
-        125.08591065292097: 139.3700787401575e-3,
-        140.89347079037802: 134.6456692913386e-3,
-        155.32646048109967: 131.2992125984252e-3,
-        170.10309278350516: 128.74015748031502e-3,
-        189.00343642611685: 125.98425196850397e-3,
-        209.27835051546393: 123.62204724409457e-3,
-        227.66323024054984: 122.04724409448824e-3,
+        22.8: 0.2970,
+        45.6: 0.2177,
+        68.4: 0.1761,
+        91.2: 0.1539,
+        114.0: 0.1428,
+        136.8: 0.1355,
+        159.6: 0.1303,
+        182.4: 0.1267,
+        205.2: 0.1241,
+        228.0: 0.1219,
+        250.0: 0.1203,
+        300.0: 0.1178
     }
 
-    simple_quench_propagation(
+#    L_I = {
+#        0.0 : 0.37428008998875145,
+#        1.0 : 0.37090854893138364,
+#        5.0 : 0.35742238470191234,
+#        10.0 : 0.3405646794150732,
+#        20.790378006872857: 0.3041844769403825,
+#        23.024054982817873: 296.65354330708664e-3,
+#        29.037800687285227: 276.37795275590554e-3,
+#        34.36426116838491: 257.8740157480314e-3,
+#        40.54982817869417: 236.2204724409449e-3,
+#        46.048109965635746: 217.5196850393701e-3,
+#        50.51546391752578: 209.25196850393704e-3,
+#        63.23024054982818: 186.02362204724412e-3,
+#        68.72852233676977: 176.18110236220477e-3,
+#        73.8831615120275: 171.0629921259843e-3,
+#        82.47422680412372: 162.59842519685043e-3,
+#        91.23711340206187: 154.13385826771656e-3,
+#        104.1237113402062: 147.83464566929138e-3,
+#        114.26116838487971: 142.7165354330709e-3,
+#        125.08591065292097: 139.3700787401575e-3,
+#        140.89347079037802: 134.6456692913386e-3,
+#        155.32646048109967: 131.2992125984252e-3,
+#        170.10309278350516: 128.74015748031502e-3,
+#        189.00343642611685: 125.98425196850397e-3,
+#        209.27835051546393: 123.62204724409457e-3,
+#        227.66323024054984: 122.04724409448824e-3,
+#    }
+
+    [
+            R, I, Vq, Ve, Vc, Vl, Vnz, Eq, Eps, Tmax, Tavg,
+            final_zone_transv_radius, final_zone_long_radius,
+            time_axis, iter_cnt
+        ] =    simple_quench_propagation(
         I_op=Iop, T_cs=Tcs, T_op=Top, copper_area=s_cu,
         nbti_area=s_nbti, insulator_area=s_insulator,
         inductanceI=L_I, magnet_vol=magnet_vol, t_valid=t_valid,
@@ -975,5 +1008,18 @@ if __name__ == "__main__":
         time_step=time_step, RRR=RRR, B=B, alpha=alpha,
         tolerance=curr_tol, geometry=geometry,
         V_ps_max = max_ps_voltage, t_ps=ps_delay,
-        V_fw_diode=V_fw_diode, use_magnetoresist=use_magnetoresist
+        V_fw_diode=V_fw_diode, use_magnetoresist=use_magnetoresist,
+        print_results=False
         )
+
+    fig, ax1 = _plt.subplots()
+    ax2 = ax1.twinx()
+    # plot dump voltage and current
+    ax1.plot(time_axis, Ve, 'k-')
+    ax2.plot(time_axis, I, 'r-')
+    ax1.set_xlabel('Time [s]')
+    ax1.set_ylabel('Dump voltage [V]', color='k')
+    ax2.set_ylabel('Current [A]', color='r')
+    _plt.minorticks_on()
+    _plt.grid(which='both', axis='both')
+    _plt.show()
