@@ -111,12 +111,27 @@ class Copper:
         return integral_val / (T2 - T1)
 
     def calc_thermal_conductivity(self, T, RRR):
-        
-        return _np.interp(
-            T,
-            self._thermal_conductivity_per_rrr_data[RRR]['T'],
-            self._thermal_conductivity_per_rrr_data[RRR]['k']
+        # find lower bound for RRR in table
+        rrr_low = max(
+            key_rrr for key_rrr in self._thermal_conductivity_per_rrr_data
+             if key_rrr <= RRR
             )
+        # find higher bound for RRR in table
+        rrr_high = min(
+            key_rrr for key_rrr in self._thermal_conductivity_per_rrr_data
+             if key_rrr >= RRR
+            )
+        # find k for given T for lower bound RRR
+        T_rrr_low = self._thermal_conductivity_per_rrr_data[rrr_low]['T']
+        k_rrr_low = self._thermal_conductivity_per_rrr_data[rrr_low]['k']
+        k_low = _np.interp(T, T_rrr_low, k_rrr_low)
+        # find k for given T for higher bound RRR
+        T_rrr_high = self._thermal_conductivity_per_rrr_data[rrr_high]['T']
+        k_rrr_high = self._thermal_conductivity_per_rrr_data[rrr_high]['k']
+        k_high = _np.interp(T, T_rrr_high, k_rrr_high)
+        # interpolate k value between low and high RRR bounds
+        k = _np.interp(RRR, [rrr_low, rrr_high], [k_low, k_high])
+        return k
 
     def calc_avg_thermal_conductivity(self, T1, T2, RRR, num_steps=1000):
         x = _np.linspace(T1, T2, num=num_steps, endpoint=True)
