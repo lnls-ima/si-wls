@@ -366,15 +366,6 @@ class SCWire:
         
         [s_sc, s_cu] = self.calc_area_sc_cu(d_cond, ratio_cu_sc)
         
-        # Critical temperature at zero flux density [K]
-        self.Tc = Tc
-
-        # Critical field at zero temperature [T]
-        self.Bc = 14.5
-
-        # Critical surface data
-        self.critical_surface = self.init_critical_surface()
-
         # Transition temperature [K]
         self.Tjoule = _np.divide(_np.add(Tc, Tcs), 2)
 
@@ -488,51 +479,6 @@ class SCWire:
             return [ratio_cu_sc, s_cu]
         except Exception:
             _traceback.print_exc(file=_sys.stdout)
-
-    def calc_Jc(self,B,T):
-        # Critical surface fit parameters
-        alpha = 0.57
-        beta = 0.9
-        gamma = 2.32
-        C0 = 27.04
-        Jcref = 3000  # A/mm²
-
-        # Normalized temperature and field
-        t = T/self.Tc
-        Bc2 = self.Bc * (1-pow(t,1.7))
-        B = _np.clip(B,0,Bc2)
-        b = B/Bc2
-        
-        return Jcref*C0 * pow(B,alpha-1) / (pow(Bc2,alpha)) * pow(1-b,beta) * pow(1-pow(t,1.7), gamma)
-
-    def init_critical_surface(self):
-        B = _np.arange(1,self.Bc,1)
-        B = _np.insert(B,0,0.1)
-        T = _np.arange(0,self.Tc,0.1)
-        
-        Tcs_data = {}
-        
-        for b in B:
-            Jc = [self.calc_Jc(b,t) for t in T]
-            Tcs_data[b] = {}
-            Tcs_data[b]['Jc'] = Jc
-            Tcs_data[b]['T'] = T
-            
-        return Tcs_data
-
-    def calc_current_sharing_temp(self,Jc,B):
-        return _np.interp(
-                    B, 
-                    list(self.critical_surface.keys()),
-                    [ 
-                        _np.interp(
-                            Jc, 
-                            _np.flip(self.critical_surface[b]['Jc']), 
-                            _np.flip(self.critical_surface[b]['T'])
-                        ) 
-                        for b in self.critical_surface.keys()
-                    ]
-                )
 
 
 
