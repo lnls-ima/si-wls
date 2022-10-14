@@ -1,7 +1,7 @@
 *.py[cod]
 *.asv
 *.bak
-*.ipynb
+*.ipynb_checkpoints
 model**/spice/**/*.log
 model**/spice/**/*.raw
 model**/spice/**/*.net
