@@ -1,6 +1,7 @@
 *.py[cod]
 *.asv
 *.bak
+*.ipynb
 model**/spice/**/*.log
 model**/spice/**/*.raw
 model**/spice/**/*.net
