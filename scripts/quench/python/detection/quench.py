@@ -343,8 +343,8 @@ def simple_quench_propagation(
         inductanceI, magnet_vol, t_valid=0, t_act=0, det_tresh=0, R_dump=0,
         time_step_1=0.000001, time_step_2=0.000001, switch_time_step=-1, RRR=100,
         B=0, alpha=0.03, tolerance=1e-6, geometry='ellipsoid', V_ps_max=10,
-        t_ps=0, V_fw_diode=0, use_magnetoresist=False, print_results=True,
-        write_files=False
+        t_ps=0, V_fw_diode=0, use_magnetoresist=False, update_tcs=True,
+        print_results=True, write_files=False
         ):
     """
        Refs.:
@@ -544,6 +544,21 @@ def simple_quench_propagation(
         I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
     # update current density
     J = I_op / cond_area
+    if update_tcs:
+        # update current-sharing temperature
+        Tcs = wire.calc_current_sharing_temp(J*1e-6, B)
+        T_joule = _np.divide(_np.add(wire.Tc, Tcs), 2)
+        # update average sc wire properties
+        C_avg = composite_vol_specific_heat_sc(
+            copper_area, nbti_area, T_joule, T_op, B
+        )
+        k_avg = composite_thermal_conductivity(
+            copper_area, nbti_area, T_joule, T_op, RRR
+        )
+        rho_0 = composite_resistivity(
+            T_joule, copper_area, nbti_area, RRR, B,
+            is_sc=False, use_magnetoresist=use_magnetoresist
+            )
     # update prop velocity
     vq = _detection.calc_prop_velocity(
         J, C_avg, rho_0, k_avg, T_joule, T_op, 'adiabatic'
@@ -694,6 +709,21 @@ def simple_quench_propagation(
             I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
         # update current density
         J = I_op / cond_area
+        if update_tcs:
+            # update current-sharing temperature
+            Tcs = wire.calc_current_sharing_temp(J*1e-6, B)
+            T_joule = _np.divide(_np.add(wire.Tc, Tcs), 2)
+            # update average sc wire properties
+            C_avg = composite_vol_specific_heat_sc(
+                copper_area, nbti_area, T_joule, T_op, B
+            )
+            k_avg = composite_thermal_conductivity(
+                copper_area, nbti_area, T_joule, T_op, RRR
+            )
+            rho_0 = composite_resistivity(
+                T_joule, copper_area, nbti_area, RRR, B,
+                is_sc=False, use_magnetoresist=use_magnetoresist
+                )
         # update prop velocity
         vq = _detection.calc_prop_velocity(
             J, C_avg, rho_0, k_avg, T_joule, T_op, 'adiabatic'
