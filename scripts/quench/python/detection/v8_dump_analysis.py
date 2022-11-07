@@ -23,10 +23,10 @@ failure_list = [
     {'matrix' : [(0, 0), (0, 1)], 'name' : '2 units in 1 row', 'line' : '.'},
 ]
 
-percent_shorted = 100
+percent_shorted = 50
 
 # dummy equivalent resistance
-r_eq = 1 # ohm
+r_eq = 2 # ohm
 
 ###########################################################
 # 3D plots
@@ -632,7 +632,7 @@ for failure in failure_list:
     _plt.show()
 
 # plot short failures (combined data)
-percent_shorted = 100
+percent_shorted = 50
 for failure in failure_list:
     fig, ax1 = _plt.subplots()
     ax2 = ax1.twinx()
@@ -686,7 +686,7 @@ for failure in failure_list:
     _plt.show()
 
 # plot short failures: Resistance change
-percent_shorted = 100
+percent_shorted = 50
 for failure in failure_list:
     fig, ax1 = _plt.subplots()
     x = []
@@ -730,7 +730,7 @@ for failure in failure_list:
     _plt.show()
 
 # plot short failures: Voltage unbalance
-percent_shorted = 100
+percent_shorted = 50
 for failure in failure_list:
     fig, ax1 = _plt.subplots()
     x = []
