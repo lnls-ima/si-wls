@@ -1,0 +1,5 @@
+Yoke: -48.6 kN
+Polo lateral: +8.34 kN
+Polo central: -1.5 kN
+Bobina lateral: +2.8 kN
+Bobina central: -1.4 kN
