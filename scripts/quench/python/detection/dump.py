@@ -28,8 +28,8 @@ class ResistorBank:
     def __init__(self, n_parallel=1, n_series=1, r_eq=1):
         if n_parallel< 1 or n_series < 1:
             raise ValueError('Resistor matrix cannot be smaller than (1, 1)')
-        r_unit = self.get_unit_resistance(r_eq, n_parallel, n_series)
-        self.r_matrix = _np.ones((n_parallel, n_series)) * r_unit
+        self.r_unit = self.get_unit_resistance(r_eq, n_parallel, n_series)
+        self.r_matrix = _np.ones((n_parallel, n_series)) * self.r_unit
         self.n_parallel = n_parallel
         self.n_series = n_series
         return
@@ -74,8 +74,8 @@ class ResistorBank:
                     inv_paralel_r = _np.inf
                     break
                 else:
-                    inv_paralel_r += 1/r
-            eq_r += 1/ inv_paralel_r
+                    inv_paralel_r += _np.divide(1, r)
+            eq_r += _np.divide(1, inv_paralel_r)
         return eq_r
     
     def get_equivalent_left_resistance(self):
@@ -88,8 +88,8 @@ class ResistorBank:
                     inv_paralel_r = _np.inf
                     break
                 else:
-                    inv_paralel_r += 1/r
-            eq_r += 1/ inv_paralel_r
+                    inv_paralel_r += _np.divide(1, r)
+            eq_r += _np.divide(1, inv_paralel_r)
         return eq_r
 
     def get_equivalent_right_resistance(self):
@@ -102,9 +102,9 @@ class ResistorBank:
                     inv_paralel_r = _np.inf
                     break
                 else:
-                    inv_paralel_r += 1/r
-            eq_r += 1/ inv_paralel_r
+                    inv_paralel_r += _np.divide(1, r)
+            eq_r += _np.divide(1, inv_paralel_r)
         return eq_r
 
     def get_unit_resistance(self, r_eq, n_parallel, n_series):
-        return (r_eq / n_series) * n_parallel
+        return (_np.divide(r_eq, n_series)) * n_parallel
