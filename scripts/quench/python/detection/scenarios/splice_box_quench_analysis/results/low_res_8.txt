@@ -1,0 +1,7 @@
+iter_cnt, 739
+Iop, 10
+B, 0.001
+Rdump, 1
+Top, 4.2
+wire_length, 0.3
+vdet, 0.01

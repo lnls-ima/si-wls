@@ -344,7 +344,7 @@ def simple_quench_propagation(
         time_step_1=0.000001, time_step_2=0.000001, switch_time_step=-1, RRR=100,
         B=0, alpha=0.03, tolerance=1e-6, geometry='ellipsoid', V_ps_max=10,
         t_ps=0, V_fw_diode=0, use_magnetoresist=False, update_tcs=True,
-        print_results=True, write_files=False
+        print_results=True, write_files=False, end_time=_np.inf, end_temp=_np.inf
         ):
     """
        Refs.:
@@ -462,6 +462,22 @@ def simple_quench_propagation(
     # grow zone based on vq
     zone_list[0].long_radius += vq * time_step
     zone_list[0].transv_radius += alpha * vq * time_step
+    if geometry == 'ellipsoid':
+        quench_vol = ellipsoid_vol(
+            zone_list[0].long_radius, zone_list[0].transv_radius
+        )
+        if quench_vol > magnet_vol:
+            quench_vol = magnet_vol
+        coil_len_ratio = quench_vol / magnet_vol
+    else:
+        quench_vol = (
+            2 * zone_list[0].long_radius
+            * (copper_area + nbti_area + insulator_area)
+            )
+        if quench_vol > magnet_vol:
+            zone_list[0].long_radius = magnet_vol * 0.5 / (copper_area + nbti_area + insulator_area)
+            quench_vol = magnet_vol
+        coil_len_ratio = quench_vol / magnet_vol
     # calculate current density after quench
     J = J0
     # increase zone 1 temperature
@@ -500,21 +516,9 @@ def simple_quench_propagation(
             V_ps = -V_fw_diode
         V_c = V_dump - V_ps
         V_l = V_quench + V_dump - V_ps
-        if geometry == 'ellipsoid':
-            coil_len_ratio = ellipsoid_vol(
-                zone_list[0].long_radius, zone_list[0].transv_radius
-            ) / magnet_vol
-        else:
-            coil_len_ratio = (
-                (
-                    2 * zone_list[0].long_radius
-                    * (copper_area + nbti_area + insulator_area)
-                / magnet_vol
-                )
-            )
         V_nz = V_l * coil_len_ratio - V_quench
         E_ps += I_op * V_ps * time_step
-        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
+        I_op = max(0, I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step)
     else:
         R_total = R_quench
         V_dump = 0
@@ -527,21 +531,9 @@ def simple_quench_propagation(
             V_ps = -V_fw_diode
         V_c = V_dump - V_ps
         V_l = V_quench + V_dump - V_ps
-        if geometry == 'ellipsoid':
-            coil_len_ratio = ellipsoid_vol(
-                zone_list[0].long_radius, zone_list[0].transv_radius
-            ) / magnet_vol
-        else:
-            coil_len_ratio = (
-                (
-                    2 * zone_list[0].long_radius
-                    * (copper_area + nbti_area + insulator_area)
-                )
-                / magnet_vol
-            )
         V_nz = V_l * coil_len_ratio - V_quench
         E_ps += I_op * V_ps * time_step
-        I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
+        I_op = max(0, I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step)
     # update current density
     J = I_op / cond_area
     if update_tcs:
@@ -598,16 +590,26 @@ def simple_quench_propagation(
             new_transv_radius = (
                 zone_list[-1].transv_radius + alpha*vq*time_step
             )
-            # stop propagation if whole magnet quenched
+            # fix quench region if it has grown beyond magnet size
             if geometry == 'ellipsoid':
-                if ellipsoid_vol(new_long_radius, new_transv_radius) >= magnet_vol:
-                    propagation_end = True
-            elif geometry == 'line':
-                if (
-                    2*new_long_radius
+                quench_vol = ellipsoid_vol(
+                    new_long_radius, new_transv_radius
+                )
+                if quench_vol > magnet_vol:
+                    quench_vol = magnet_vol
+                coil_len_ratio = quench_vol / magnet_vol
+            else:
+                quench_vol = (
+                    2 * new_long_radius
                     * (copper_area + nbti_area + insulator_area)
-                     >= magnet_vol
-                    ):
+                    )
+                if quench_vol > magnet_vol:
+                    new_long_radius = magnet_vol * 0.5 / (copper_area + nbti_area + insulator_area)
+                    quench_vol = magnet_vol
+                coil_len_ratio = quench_vol / magnet_vol
+            # stop propagation if whole magnet quenched
+            if geometry == 'ellipsoid' or geometry == 'line':
+                if coil_len_ratio >= 1:
                     propagation_end = True
             else:
                 raise ValueError('Invalid geometry: {0}'.format(geometry))    
@@ -665,21 +667,9 @@ def simple_quench_propagation(
                 V_ps = -V_fw_diode
             V_c = V_dump - V_ps
             V_l = V_quench + V_dump - V_ps
-            if geometry == 'ellipsoid':
-                coil_len_ratio = ellipsoid_vol(
-                    zone_list[-1].long_radius, zone_list[-1].transv_radius
-                ) / magnet_vol
-            else:
-                coil_len_ratio = (
-                    (
-                        2 * zone_list[-1].long_radius
-                        * (copper_area + nbti_area + insulator_area)
-                    )
-                    / magnet_vol
-                )
             V_nz = V_l * coil_len_ratio - V_quench
             E_ps += I_op * V_ps * time_step
-            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
+            I_op = max(0, I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step)
         else:
             R_total = R_quench
             V_dump = 0
@@ -692,21 +682,9 @@ def simple_quench_propagation(
                 V_ps = -V_fw_diode
             V_c = V_dump - V_ps
             V_l = V_quench + V_dump - V_ps
-            if geometry == 'ellipsoid':
-                coil_len_ratio = ellipsoid_vol(
-                    zone_list[-1].long_radius, zone_list[-1].transv_radius
-                ) / magnet_vol
-            else:
-                coil_len_ratio = (
-                    (
-                        2 * zone_list[-1].long_radius
-                        * (copper_area + nbti_area + insulator_area)
-                    )
-                    / magnet_vol
-                )
             V_nz = V_l * coil_len_ratio - V_quench
             E_ps += I_op * V_ps * time_step
-            I_op = I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step
+            I_op = max(0, I_op - ((I_op*R_total - V_ps)/inductance(inductanceI,I_op)) * time_step)
         # update current density
         J = I_op / cond_area
         if update_tcs:
@@ -753,6 +731,10 @@ def simple_quench_propagation(
         final_zone_long_radius.append(zone_list[-1].long_radius)
         time_axis.append(time_axis[-1] + time_step)
         iter_cnt += 1
+        # simulation additional ending conditions
+        if (Tmax[-1] > end_temp
+            or time_axis[-1] > end_time):
+            break
     # print results
     if print_results:
         ## R quench plot
