@@ -5,3 +5,8 @@ model**/spice/**/*.log
 model**/spice/**/*.raw
 model**/spice/**/*.net
 __pycache__/
+/model-08
+model-08/simulation/magnetic/integrals-and-multipoles/diff_currents/field_in_trajectory/2022-08-05_SWLS_Sirius_Model8.0_Currents_field_in_trajectory_I=100A.txt
+model-08/simulation/magnetic/integrals-and-multipoles/diff_currents/field_in_trajectory/2022-08-05_SWLS_Sirius_Model8.0_Currents_field_in_trajectory_I=10A.txt
+model-08/simulation/magnetic/integrals-and-multipoles/diff_currents/field_in_trajectory/2022-08-05_SWLS_Sirius_Model8.0_Currents_field_in_trajectory_I=100A.txt
+/model-08/simulation
