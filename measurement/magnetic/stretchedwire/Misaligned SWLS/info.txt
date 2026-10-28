@@ -1,0 +1,4 @@
+Measurements taken with the wire end at negative z being displaced by 3.2 mm in x direction.
+
+The results can be reinterpreted as the SWLS being displaced by -1.6 mm in x direction and
+rotated +1 mrad around y-axis, positioned at the ID's center.

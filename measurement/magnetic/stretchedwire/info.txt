@@ -1,1 +1,4 @@
 This folder contains the streched wire measurements of the CNPEM SWLS before Sirius Instalation
+
+Unless otherwise specified in the filename, the number N of measurements taken per point is
+equal to 10.
